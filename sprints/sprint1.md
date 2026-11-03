@@ -124,7 +124,7 @@ User Stories: US-01, US-02
 - [x] **Phát sinh (ghi 2026-11-03):** `AuthProvider` kiểm tra phiên bằng `GET /api/user/profile` và login chuyển tới `/profile` (cả hai thuộc Task 7), nên Task 6 làm bản tối thiểu: `GET /api/user/profile` chỉ đọc (id, email, role, displayName) qua `requireAuth` và trang `/profile` placeholder (có nút Đăng xuất) để có route bảo vệ thật mà test. Task 7 mở rộng tiếp (PUT, số đo, phone, avatar). Bật `AUTH_ROUTES_READY.login = true`, cập nhật `design/screens.md` (màn `/login`, header đăng xuất)
 - [x] `loginLimiter` (10 lần thất bại / 15 phút / IP, `skipSuccessfulRequests`) và `DUMMY_HASH` chống timing theo `design/flows/login.md`
 
-**Ghi chú verify (2026-11-03):** đã test thật trên DB + trình duyệt: login đúng/sai, 400, 429, GET profile (token hợp lệ/thiếu/sai/hết hạn/HS512), guest vào `/profile` → `/login?redirect=`, đăng ký → `/login` có banner, reload giữ phiên, logout, Back sau logout, token giả khi khởi động. **Chưa test trên trình duyệt:** 401 giữa phiên (`reason=expired`), đồng bộ nhiều tab (`storage`), màn lỗi mạng + Thử lại, 429/400 của form login, responsive/menu mobile. Lưu ý: `skipSuccessfulRequests` chỉ bỏ qua status < 400 nên request 400 cũng tính vào hạn mức 10 lần.
+**Ghi chú verify (2026-11-03):** đã test thật trên DB + trình duyệt (Playwright): login đúng/sai, form trống, 400, 429 (hiện thông báo, giữ dữ liệu form), GET profile (token hợp lệ/thiếu/sai/hết hạn/HS512), guest vào `/profile` → `/login?redirect=`, đăng ký → `/login` có banner, reload giữ phiên, logout, Back sau logout, token giả khi khởi động, 401 giữa phiên (`reason=expired` + banner, hai request song song chỉ xử lý một lần), đồng bộ nhiều tab (`storage`), mất kết nối backend → màn lỗi + Thử lại, responsive 375px + menu mobile. Lỗi tìm thấy khi test và đã sửa: `RequireAuth` ghi đè URL làm mất `reason=expired` (nay lưu `expiredFor` trong session). Lưu ý: `skipSuccessfulRequests` chỉ bỏ qua status < 400 nên request 400 cũng tính vào hạn mức 10 lần.
 
 **Acceptance Criteria:**
 - User có thể đăng nhập với email/password
@@ -159,6 +159,10 @@ User Stories: US-01, US-02
 - Validation đầy đủ
 - Chỉ user đã login mới truy cập được
 - UI phản hồi khi save thành công/thất bại
+
+### Backlog phát sinh (ghi cho Task 7 / sprint sau)
+- [ ] `document.title` chưa được đặt lại ở landing và trang 404 nên còn tiêu đề của trang trước (ví dụ "Hồ sơ — Try-on"). Acceptance: mỗi route đặt title riêng.
+- [ ] Cân nhắc chỉ tính lần đăng nhập sai (401) vào `loginLimiter`, không tính 400.
 
 ## Definition of Done
 - Code được review

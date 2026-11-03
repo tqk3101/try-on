@@ -109,7 +109,8 @@ export default function AuthProvider({ children }) {
         query.set('reason', 'expired');
         navigate(`${PATHS.login}?${query}`, { replace: true });
       }
-      setSession(GUEST);
+      // expiredFor: để RequireAuth (đang mount) tạo cùng URL có reason=expired, không ghi đè.
+      setSession({ ...GUEST, expiredFor: `${pathname}${search}` });
     });
     return () => setUnauthorizedHandler(null);
   }, [navigate]);
@@ -134,6 +135,7 @@ export default function AuthProvider({ children }) {
       status: session.status,
       user: session.user,
       logoutKey: session.logoutKey ?? null,
+      expiredFor: session.expiredFor ?? null,
       login,
       logout,
       retry,

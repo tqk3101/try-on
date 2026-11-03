@@ -34,7 +34,7 @@ function SessionError({ onRetry }) {
 
 /** Route cần đăng nhập (layout route). */
 export function RequireAuth() {
-  const { status, logoutKey, retry } = useAuth();
+  const { status, logoutKey, expiredFor, retry } = useAuth();
   const { pathname, search, key } = useLocation();
 
   if (status === 'checking') return <FullPageSpinner />;
@@ -42,8 +42,11 @@ export function RequireAuth() {
   if (status === 'guest') {
     // Vừa đăng xuất từ chính trang này: về trang chủ (không phải /login).
     if (logoutKey === key) return <Navigate to={PATHS.home} replace />;
-    const redirect = encodeURIComponent(`${pathname}${search}`);
-    return <Navigate to={`${PATHS.login}?redirect=${redirect}`} replace />;
+    const current = `${pathname}${search}`;
+    const redirect = encodeURIComponent(current);
+    // Phiên vừa hết hạn giữa chừng ngay tại trang này: giữ reason=expired để hiện banner.
+    const reason = expiredFor === current ? '&reason=expired' : '';
+    return <Navigate to={`${PATHS.login}?redirect=${redirect}${reason}`} replace />;
   }
   return <Outlet />;
 }
