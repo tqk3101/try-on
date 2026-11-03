@@ -91,3 +91,21 @@ export function EyeOffIcon(props) {
     </svg>
   );
 }
+
+export function PersonIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="12" cy="7" r="3" />
+      <path d="M9 21v-6.5L7.5 11M15 21v-6.5l1.5-3.5M9 11h6M9 21h6" />
+    </svg>
+  );
+}
+
+export function AlertIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 4 2.5 20h19z" />
+      <path d="M12 10v4.5M12 17.5v.01" />
+    </svg>
+  );
+}

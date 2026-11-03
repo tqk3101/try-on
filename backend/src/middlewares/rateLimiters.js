@@ -3,11 +3,12 @@ import { HttpError } from './httpError.js';
 
 // Bộ nhớ trong, theo IP: đủ cho 1 instance (design/flows/README.md D8).
 // Vượt ngưỡng -> 429 TOO_MANY_REQUESTS cùng envelope lỗi chung; thư viện tự gắn Retry-After.
-function createLimiter({ windowMs, limit, skipSuccessfulRequests = false }) {
+function createLimiter({ windowMs, limit, skipSuccessfulRequests = false, keyGenerator }) {
   return rateLimit({
     windowMs,
     limit,
     skipSuccessfulRequests,
+    ...(keyGenerator && { keyGenerator }),
     standardHeaders: 'draft-8',
     legacyHeaders: false,
     handler: (req, res, next) =>
@@ -29,4 +30,11 @@ export const loginLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,
   limit: 10,
   skipSuccessfulRequests: true,
+});
+
+/** Avatar (PUT + DELETE dùng chung bộ đếm): 20 lần / 15 phút / user. Đặt sau requireAuth. */
+export const avatarLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  keyGenerator: (req) => req.user.id,
 });

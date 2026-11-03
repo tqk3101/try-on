@@ -44,8 +44,10 @@ export default function AuthProvider({ children }) {
     expiredHandledRef.current = false;
     let next;
     try {
-      const { user } = await fetchProfile();
-      next = { status: 'authenticated', user };
+      const { profile } = await fetchProfile();
+      // AuthContext chỉ giữ phần định danh; hồ sơ đầy đủ do trang /profile tự tải.
+      const { id, email, role, displayName } = profile;
+      next = { status: 'authenticated', user: { id, email, role, displayName } };
     } catch (error) {
       // 401: apiClient đã xoá token -> guest. Lỗi mạng/5xx: giữ token, hiện màn lỗi + Thử lại.
       next =
@@ -88,6 +90,13 @@ export default function AuthProvider({ children }) {
     expiredHandledRef.current = false;
     setSession({ status: 'authenticated', user });
     return user;
+  }, []);
+
+  // Cập nhật một phần user trong phiên (vd. displayName sau khi lưu hồ sơ); không điều hướng.
+  const updateUser = useCallback((changes) => {
+    setSession((prev) =>
+      prev.status === 'authenticated' ? { ...prev, user: { ...prev.user, ...changes } } : prev,
+    );
   }, []);
 
   const retry = useCallback(() => {
@@ -139,8 +148,9 @@ export default function AuthProvider({ children }) {
       login,
       logout,
       retry,
+      updateUser,
     }),
-    [session, login, logout, retry],
+    [session, login, logout, retry, updateUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

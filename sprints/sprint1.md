@@ -139,17 +139,19 @@ User Stories: US-01, US-02
 **Mô tả:** Cho phép user cập nhật thông tin cá nhân
 
 **Công việc:**
-- [ ] Tạo API endpoint lấy thông tin user (GET /api/user/profile)
-- [ ] Tạo API endpoint cập nhật profile (PUT /api/user/profile)
-- [ ] Implement JWT verification middleware
-- [ ] Tạo UI profile page
-- [ ] Form cập nhật thông tin (tên hiển thị, số điện thoại tuỳ chọn, chiều cao, cân nặng; email chỉ đọc)
+- [x] Tạo API endpoint lấy thông tin user (GET /api/user/profile)
+- [x] Tạo API endpoint cập nhật profile (PUT /api/user/profile)
+- [x] Implement JWT verification middleware
+- [x] Tạo UI profile page
+- [x] Form cập nhật thông tin (tên hiển thị, số điện thoại tuỳ chọn, chiều cao, cân nặng; email chỉ đọc)
 - [x] Áp migration `004_add_profiles_phone.sql` lên Supabase (thêm cột `phone`) trước khi làm API profile — đã áp 2026-11-03
-- [ ] Upload avatar (sử dụng Supabase Storage)
-- [ ] Xoá ảnh toàn thân: API `DELETE /api/user/profile/avatar` + nút "Xoá ảnh" có hộp thoại xác nhận (flow: `design/flows/avatar-upload.md` mục 4)
-- [ ] Validate dữ liệu cập nhật
-- [ ] Xử lý upload file
-- [ ] Update UI sau khi save thành công
+- [x] Upload avatar (sử dụng Supabase Storage)
+- [x] Xoá ảnh toàn thân: API `DELETE /api/user/profile/avatar` + nút "Xoá ảnh" có hộp thoại xác nhận (flow: `design/flows/avatar-upload.md` mục 4)
+- [x] Validate dữ liệu cập nhật
+- [x] Xử lý upload file
+- [x] Update UI sau khi save thành công
+
+**Ghi chú verify (2026-11-03):** backend test curl với DB + Storage thật (validate từng trường, trường lạ bị bỏ qua, magic bytes 415, >5MB 413, thay ảnh xoá object cũ, DELETE idempotent); frontend test trình duyệt thật (lần đầu + banner, lỗi từng trường + focus, lưu có dấu phẩy và +84, reload giữ dữ liệu, tải/thay/xoá ảnh qua hộp thoại xác nhận, lỗi một phần + Thử lại tải ảnh, mất kết nối + Thử lại, 401 giữa phiên, đăng xuất, mobile 375px); agent chính tự chạy lại luồng chính. **Chưa test:** 429/500/502 thật của avatar, nhánh dọn object khi UPDATE DB lỗi, lỗi ký signed URL, ảnh có EXIF, Safari/iOS. Đã đổi hợp đồng `GET /user/profile` từ `{ user }` sang `{ profile }` (AuthProvider đã cập nhật).
 
 **Acceptance Criteria:**
 - User có thể xem thông tin profile
