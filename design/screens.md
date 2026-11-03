@@ -91,7 +91,7 @@ Một cột ở mọi cỡ: thẻ `w-full max-w-md`, padding `p-6` (mobile) / `p
 
 ## Đăng nhập — `/login`
 
-Code: `frontend/src/pages/LoginPage.jsx`, khung `AuthLayout`, `TextField`, validate `validateLoginForm` (`utils/authValidation.js`), API `loginAccount` (`services/authApi.js`), mock `mocks/authMock.js`. Flow: `design/flows/login.md`.
+Code: `frontend/src/pages/LoginPage.jsx`, khung `AuthLayout`, `TextField`, validate `validateLoginForm` (`utils/authValidation.js`), API `loginAccount` (`services/authApi.js`), phiên qua `useAuth().login`. Flow: `design/flows/login.md`.
 
 ### Mục đích
 Khách đăng nhập bằng email + mật khẩu; thành công chuyển tới `redirect` hợp lệ hoặc `/profile`.
@@ -131,26 +131,50 @@ Một cột ở mọi cỡ như `/register`: `w-full max-w-md`, padding `p-6` (m
 
 ---
 
-## Hồ sơ — `/profile` (placeholder Task 6)
+## Hồ sơ — `/profile`
 
-Code: `frontend/src/pages/ProfilePage.jsx` (trong `MainLayout`). **Toàn bộ nội dung chỉ là placeholder; Task 7 thay bằng form hồ sơ đầy đủ** (tên, số đo, phone, avatar).
+Code: `frontend/src/pages/ProfilePage.jsx` (trong `RequireAuth` + `MainLayout`), component ở `components/profile/` (`ProfileForm`, `AvatarField`, `ConfirmDialog`), trạng thái/hành động ở `features/profile/useProfile.js`, dữ liệu qua `features/profile/profileApi.js` (nối API thật qua `services/userApi.js`). Validate: `utils/profileValidation.js`, `utils/avatarCheck.js`. Flow: `design/flows/profile.md`, `avatar-upload.md`.
 
 ### Mục đích
-Có một route được bảo vệ thật để kiểm thử đăng nhập/đăng xuất.
+Xem và cập nhật hồ sơ (tên hiển thị, số điện thoại tuỳ chọn, chiều cao, cân nặng) và ảnh toàn thân dùng cho phòng thử đồ.
 
 ### Quyền truy cập
-Đã đăng nhập (`RequireAuth`; khách bị chuyển `/login?redirect=/profile`).
+Đã đăng nhập (`RequireAuth`; khách bị chuyển `/login?redirect=/profile`). `document.title` = "Hồ sơ — Try-on".
 
 ### Các thành phần chính
-1. **Tiêu đề** "Hồ sơ của tôi" + câu "Chào mừng bạn quay lại. Tính năng chỉnh sửa hồ sơ sẽ sớm có mặt." (placeholder).
-2. **Thẻ thông tin** (`dl`): Tên hiển thị (hoặc "Chưa đặt tên"), Email. Dữ liệu từ `GET /api/user/profile`.
-3. **Nút "Đăng xuất"** (outline, `min-h-12`; full width trên mobile, tự co từ `sm`): gọi `logout()`, không hỏi xác nhận.
+1. **Tiêu đề** "Hồ sơ của tôi" + câu mô tả ngắn.
+2. **Skeleton khi tải**: khung ảnh 3:4 + 4 ô nhập + nút (animate-pulse; `role="status"`, chữ ẩn "Đang tải hồ sơ…").
+3. **Khối lỗi tải** (lỗi mạng/5xx): thẻ `role="alert"` "Không tải được hồ sơ" + message + nút **Thử lại** (gọi lại GET). Không hiện form rỗng.
+4. **Banner** "Hoàn thiện hồ sơ để bắt đầu thử đồ" (`role="status"`, nền blush) khi chưa có chiều cao hoặc cân nặng; biến mất sau khi lưu đủ số đo.
+5. **Khối ảnh toàn thân** (`AvatarField`): khung `aspect-[3/4]` `object-contain` (không méo/cắt), placeholder (icon người + "Chưa có ảnh toàn thân") khi chưa có ảnh hoặc ảnh lỗi; lớp phủ spinner "Đang tải ảnh lên…/Đang xoá ảnh…" khi bận. Nút:
+   - **Chọn ảnh / Thay ảnh** (input file `accept="image/jpeg,image/png"`, trên mobile hệ điều hành cho chọn chụp trực tiếp).
+   - **Xoá ảnh** (chỉ khi có ảnh đã lưu và chưa chọn ảnh mới) → hộp thoại xác nhận → `DELETE` ngay, độc lập nút Lưu.
+   - **Bỏ ảnh đã chọn** (chỉ khi có ảnh mới chờ lưu): chỉ phía client.
+   - Chú thích "Ảnh mới chưa được lưu. Bấm Lưu để cập nhật."
+   - Hướng dẫn ảnh chuẩn: toàn thân, JPG/PNG ≤ 5MB, dọc 3:4 hoặc 9:16, cạnh ngắn ≥ 720px.
+6. **Kiểm tra ảnh phía client** (`avatarCheck.js`): loại file (jpg/jpeg/png) và dung lượng ≤ 5MB là **lỗi chặn** ("Chỉ hỗ trợ ảnh JPG hoặc PNG." / "Ảnh vượt quá 5MB…"), ảnh không đọc được cũng chặn; ảnh không dọc / lệch tỉ lệ > ±0.05 so với 3:4 hoặc 9:16 / cạnh ngắn < 720px chỉ **cảnh báo** (`role="alert"`, nền amber) kèm hướng dẫn chụp và 2 nút "Chọn ảnh khác" / "Vẫn dùng ảnh này" (chưa bấm thì ảnh chưa được tính là ảnh chờ lưu).
+7. **Form** (thẻ trắng `rounded-3xl`): Email (chỉ đọc, nền sand, gợi ý không thể đổi), Tên hiển thị, Số điện thoại (không bắt buộc, `type="tel"`), Chiều cao (cm) và Cân nặng (kg) (`inputMode="decimal"`, chấp nhận dấu phẩy `50,5`, làm tròn 1 chữ số thập phân). Quy tắc khớp server: tên ≤ 50 ký tự; SĐT chuẩn hoá VN 10 số; cao 100–250; nặng 30–250; ô số rỗng → "Vui lòng nhập chiều cao/cân nặng.". Lỗi hiện dưới từng ô (`aria-invalid`, `aria-describedby`), submit lỗi thì focus ô lỗi đầu tiên; sửa ô nào thì lỗi ô đó biến mất. Lỗi `fields` của server (400) map vào đúng ô.
+8. **Nút Lưu**: disabled khi không có thay đổi (text không đổi và không có ảnh chờ lưu) hoặc đang lưu/đang tải ảnh; khi lưu hiện "Đang lưu…", ô nhập chuyển readOnly (chặn submit lặp).
+9. **Toast** (`ToastProvider`): "Đã lưu hồ sơ." (PUT ok, có/không ảnh ok), "Đã cập nhật ảnh." (chỉ ảnh), "Đã xoá ảnh.", lỗi một phần "Đã lưu thông tin, nhưng chưa tải được ảnh: {message}" (nếu text không đổi: "Chưa tải được ảnh: {message}"), lỗi PUT 5xx/mạng → toast message lỗi và giữ dữ liệu đã nhập. Lỗi tải ảnh còn hiện dưới khung ảnh; lỗi 429/5xx/mạng kèm nút **Thử lại tải ảnh** (giữ file đã chọn, chỉ gọi lại PUT avatar); 400/413/415 chỉ hiện message để chọn ảnh khác.
+10. **Hộp thoại xác nhận xoá** (`ConfirmDialog`, `<dialog>` gốc + `showModal`): tiêu đề "Xoá ảnh toàn thân?", mô tả "Bạn cần tải ảnh mới để dùng tính năng thử đồ.", nút "Huỷ" (focus ban đầu) và "Xoá ảnh" (accent-dark). Focus trap và nền inert do trình duyệt xử lý, Esc/bấm nền đóng (bị chặn khi đang xoá), trả focus về nút "Xoá ảnh", `aria-labelledby`/`aria-describedby`.
+
+### Trạng thái ảnh / signed URL
+`<img onError>` (URL hết hạn sau 1 giờ): gọi lại GET **một lần** để lấy URL mới; vẫn lỗi thì hiện placeholder ("Không tải được ảnh. Bạn có thể chọn ảnh khác."). `URL.createObjectURL` của ảnh chờ lưu được `revokeObjectURL` khi đổi ảnh, bỏ ảnh, upload xong và khi rời trang (unmount, kể cả đăng xuất).
 
 ### Responsive
-Nội dung `max-w-xl` căn giữa trong `MainLayout`; thẻ `p-6`/`sm:p-8`.
+- Mobile (< 640px): một cột; ảnh (tối đa 16rem, căn giữa) rồi tới thẻ form; hai ô chiều cao/cân nặng xếp dọc; nút Lưu full width, nút ảnh xếp dọc; không tràn ngang ở 375px.
+- Tablet (640–1024px): hai ô số cạnh nhau; từ `md` (768px) bố cục hai cột: ảnh trái (16rem), form phải.
+- Desktop (> 1024px): cột ảnh 18rem, khoảng cách lớn hơn; container `max-w-5xl` của `MainLayout`.
+
+### Navigation
+- Đến từ: `/login` (sau đăng nhập), `AccountMenu` (Hồ sơ của tôi), `RequireAuth`.
+- Đi tới: Đăng xuất và các mục khác qua header (`AccountMenu`). Trang không có nút Đăng xuất riêng.
 
 ### Ghi chú
-- Sau đăng xuất: về `/`, toast "Bạn đã đăng xuất." (`components/ToastProvider.jsx`, `useToast`). Dữ liệu hồ sơ lấy từ `GET /api/user/profile` qua `AuthProvider`.
+- Đã nối API thật (Task 7): `profileApi.js` re-export `fetchProfile/updateProfile/uploadAvatar/deleteAvatar` từ `services/userApi.js`, mỗi hàm trả `{ profile }`; không còn mock.
+- Sau khi lưu text thành công, `ProfileForm` gọi `updateUser({ displayName })` (AuthProvider) một lần để `AccountMenu` hiện tên mới; không điều hướng.
+- 401 ở bất kỳ bước nào do `apiClient` xử lý chung (về `/login`), trang không tự điều hướng.
+- A11y: label gắn `htmlFor`, lỗi trường qua `aria-describedby`, banner/skeleton `role="status"`, lỗi `role="alert"`, vùng chạm ≥ 44px, trạng thái không chỉ dựa vào màu.
 
 ---
 
@@ -161,4 +185,4 @@ Code: `frontend/src/components/AccountMenu.jsx`; gắn vào `MainLayout` và `co
 - **Desktop/tablet (từ 768px):** ở góc phải header, nút pill viền gồm avatar chữ cái đầu (nền accent) + tên (hoặc email, rút gọn). Bấm mở panel dropdown (pattern disclosure: `aria-expanded`, `aria-controls`): dòng email, link "Hồ sơ của tôi" (`/profile`), nút "Đăng xuất" (màu accent-dark). Đóng bằng Esc (trả focus về nút), bấm ra ngoài hoặc chọn mục.
 - **Mobile (< 768px):** ở `LandingHeader`, khối `AccountMenu inline` nằm trong menu hamburger thay cho hai nút auth: "Đăng nhập với {email}", Hồ sơ của tôi, Đăng xuất (hàng cao >= 44px); bấm mục nào cũng đóng menu. Ở `MainLayout` (header chỉ logo) nút pill luôn hiện bên phải.
 - Landing khi đã đăng nhập: không hiện Đăng nhập/Đăng ký.
-- Props: `user` ({ email, displayName }), `onLogout`, `inline`, `onNavigate`. Trạng thái nối: `MainLayout` và `LandingHeader` hiện nhận/để `user = null` (chưa nối AuthProvider).
+- Props: `user` ({ email, displayName }), `onLogout`, `inline`, `onNavigate`. Đã nối `useAuth()` ở `MainLayout` và `LandingPage`. Tên hiển thị sau khi lưu hồ sơ chưa tự cập nhật (TODO ở `ProfileForm.jsx`).
