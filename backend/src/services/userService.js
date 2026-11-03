@@ -1,8 +1,8 @@
 import { supabase } from '../config/supabase.js';
 import { HttpError } from '../middlewares/httpError.js';
+import { signUrl } from './storageService.js';
 
 export const AVATAR_BUCKET = 'avatars';
-const SIGNED_URL_TTL_SECONDS = 3600;
 // Cột tường minh: không bao giờ select password_hash; avatar_path không trả ra client.
 const PROFILE_COLUMNS =
   'id, email, role, display_name, phone, height_cm, weight_kg, avatar_path, created_at, updated_at';
@@ -15,19 +15,6 @@ function dbError(action, error) {
 
 const toNumberOrNull = (value) => (value === null || value === undefined ? null : Number(value));
 
-/** Ký URL ảnh (TTL 3600s). Lỗi chỉ log (không log URL/path), trả null. */
-async function signAvatarUrl(avatarPath) {
-  if (!avatarPath) return null;
-  const { data, error } = await supabase.storage
-    .from(AVATAR_BUCKET)
-    .createSignedUrl(avatarPath, SIGNED_URL_TTL_SECONDS);
-  if (error || !data?.signedUrl) {
-    console.error('[storage] Ký signed URL avatar thất bại:', error?.message ?? 'no url');
-    return null;
-  }
-  return data.signedUrl;
-}
-
 async function toProfile(row) {
   return {
     id: row.id,
@@ -37,7 +24,7 @@ async function toProfile(row) {
     phone: row.phone,
     heightCm: toNumberOrNull(row.height_cm),
     weightKg: toNumberOrNull(row.weight_kg),
-    avatarUrl: await signAvatarUrl(row.avatar_path),
+    avatarUrl: await signUrl(AVATAR_BUCKET, row.avatar_path),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -93,24 +80,4 @@ export async function getAvatarPath(userId) {
 /** Đặt avatar_path (path mới hoặc null) và trả Profile. */
 export function setAvatarPath(userId, avatarPath) {
   return updateProfileRow(userId, { avatar_path: avatarPath });
-}
-
-/** Xoá object khỏi Storage, best-effort: lỗi chỉ log (file mồ côi), không ném. */
-export async function removeAvatarObject(path) {
-  try {
-    const { error } = await supabase.storage.from(AVATAR_BUCKET).remove([path]);
-    if (error) console.error('[storage] Xoá object avatar thất bại:', error.message);
-  } catch (err) {
-    console.error('[storage] Xoá object avatar thất bại:', err?.message ?? err);
-  }
-}
-
-export async function uploadAvatarObject(path, buffer, contentType) {
-  const { error } = await supabase.storage
-    .from(AVATAR_BUCKET)
-    .upload(path, buffer, { contentType, upsert: false });
-  if (error) {
-    console.error('[storage] Upload avatar thất bại:', error.message);
-    throw new HttpError(502, 'UPLOAD_FAILED', 'Không thể tải ảnh lên lúc này. Vui lòng thử lại.');
-  }
 }

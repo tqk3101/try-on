@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation, useSearchParams } from 'react-router';
 import { useAuth } from '../auth/authContext.js';
+import ForbiddenPage from '../pages/ForbiddenPage.jsx';
 import { PATHS } from './paths.js';
 import { safeRedirect } from './safeRedirect.js';
 
@@ -60,5 +61,16 @@ export function GuestOnly() {
   if (status === 'authenticated') {
     return <Navigate to={safeRedirect(searchParams.get('redirect')) ?? PATHS.profile} replace />;
   }
+  return <Outlet />;
+}
+
+/**
+ * Route khu vực quản trị; đặt BÊN TRONG RequireAuth (RequireAuth lo guest/checking/error và điều hướng).
+ * Guard này không điều hướng: user thường chỉ thấy trang 403, không render nội dung admin.
+ * Chỉ để UX; quyền thật do backend (requireAdmin) quyết định.
+ */
+export function RequireAdmin() {
+  const { user } = useAuth();
+  if (user?.role !== 'admin') return <ForbiddenPage />;
   return <Outlet />;
 }

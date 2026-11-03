@@ -1,4 +1,5 @@
 import { verifyToken } from '../config/jwt.js';
+import { supabase } from '../config/supabase.js';
 import { HttpError } from './httpError.js';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -49,4 +50,28 @@ export function requireRole(role) {
     }
     next();
   };
+}
+
+/**
+ * Chỉ cho role admin; dùng sau `requireAuth`. Đọc role hiện tại từ DB mỗi request
+ * (không tin role trong JWT, vì role có thể đã đổi). User không còn tồn tại -> 401.
+ */
+export async function requireAdmin(req, res, next) {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', req.user.id)
+      .maybeSingle();
+    if (error)
+      throw new Error(`Supabase select profiles.role thất bại: ${error.code ?? 'unknown'}`);
+    if (!data) return next(invalidToken());
+    if (data.role !== 'admin') {
+      return next(new HttpError(403, 'FORBIDDEN', 'Bạn không có quyền thực hiện thao tác này.'));
+    }
+    req.user.role = data.role;
+    next();
+  } catch (err) {
+    next(err);
+  }
 }

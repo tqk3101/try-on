@@ -8,6 +8,7 @@ const inputBase =
  * Ô nhập có nhãn, gợi ý và thông báo lỗi gắn đúng ngữ nghĩa (aria-invalid, aria-describedby).
  * `error` có thể là chuỗi hoặc node (ví dụ kèm liên kết). `type="password"` có nút Hiện/Ẩn.
  * `children` hiển thị ngay dưới ô nhập (ví dụ thanh độ mạnh mật khẩu).
+ * `suffix` là chữ cố định nằm trong ô, bên phải (ví dụ đơn vị "₫").
  */
 export default function TextField({
   label,
@@ -15,6 +16,7 @@ export default function TextField({
   type = 'text',
   error,
   hint,
+  suffix,
   className = '',
   children,
   ...inputProps
@@ -40,10 +42,18 @@ export default function TextField({
           type={isPassword && revealed ? 'text' : type}
           aria-invalid={error ? 'true' : undefined}
           aria-describedby={describedBy || undefined}
-          className={`${inputBase} ${isPassword ? 'pr-12' : ''} ${
+          className={`${inputBase} ${isPassword ? 'pr-12' : ''} ${suffix ? 'pr-10' : ''} ${
             error ? 'border-red-600' : 'border-line hover:border-ink/30'
           }`}
         />
+        {suffix && (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-muted"
+          >
+            {suffix}
+          </span>
+        )}
         {isPassword && (
           <button
             type="button"

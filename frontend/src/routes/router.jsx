@@ -1,13 +1,17 @@
-import { createBrowserRouter } from 'react-router';
+import { createBrowserRouter, Navigate } from 'react-router';
+import AdminLayout from '../components/admin/AdminLayout.jsx';
 import AuthLayout from '../components/AuthLayout.jsx';
 import MainLayout from '../components/MainLayout.jsx';
 import LandingPage from '../pages/LandingPage.jsx';
 import LoginPage from '../pages/LoginPage.jsx';
+import AdminCategoriesPage from '../pages/admin/AdminCategoriesPage.jsx';
+import AdminProductFormPage from '../pages/admin/AdminProductFormPage.jsx';
+import AdminProductsPage from '../pages/admin/AdminProductsPage.jsx';
 import NotFoundPage from '../pages/NotFoundPage.jsx';
 import ProfilePage from '../pages/ProfilePage.jsx';
 import RegisterPage from '../pages/RegisterPage.jsx';
 import AppRoot from './AppRoot.jsx';
-import { GuestOnly, RequireAuth } from './guards.jsx';
+import { GuestOnly, RequireAdmin, RequireAuth } from './guards.jsx';
 import { PATHS } from './paths.js';
 
 const router = createBrowserRouter([
@@ -34,7 +38,28 @@ const router = createBrowserRouter([
         children: [
           {
             Component: RequireAuth,
-            children: [{ path: PATHS.profile, Component: ProfilePage }],
+            children: [
+              { path: PATHS.profile, Component: ProfilePage },
+              {
+                Component: RequireAdmin,
+                children: [
+                  {
+                    path: PATHS.admin,
+                    Component: AdminLayout,
+                    children: [
+                      { index: true, element: <Navigate to={PATHS.adminCategories} replace /> },
+                      {
+                        path: 'categories',
+                        Component: AdminCategoriesPage,
+                      },
+                      { path: 'products', Component: AdminProductsPage },
+                      { path: 'products/new', Component: AdminProductFormPage },
+                      { path: 'products/:id/edit', Component: AdminProductFormPage },
+                    ],
+                  },
+                ],
+              },
+            ],
           },
           { path: '*', Component: NotFoundPage },
         ],

@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
 import ProfileForm from '../components/profile/ProfileForm.jsx';
 import { useProfile } from '../features/profile/useProfile.js';
+import useDocumentTitle from '../hooks/useDocumentTitle.js';
 
 function ProfileSkeleton() {
   return (
@@ -43,12 +43,9 @@ function ProfileLoadError({ message, onRetry }) {
 
 /** Trang /profile (trong RequireAuth + MainLayout). Dữ liệu qua features/profile. */
 export default function ProfilePage() {
+  useDocumentTitle('Hồ sơ');
   const { status, profile, error, reload, saveText, saveAvatar, removeAvatar, refreshAvatarUrl } =
     useProfile();
-
-  useEffect(() => {
-    document.title = 'Hồ sơ — Try-on';
-  }, []);
 
   return (
     <section aria-labelledby="profile-title">

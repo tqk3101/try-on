@@ -6,8 +6,10 @@ import HowItWorks from '../components/landing/HowItWorks.jsx';
 import Categories from '../components/landing/Categories.jsx';
 import CtaBand from '../components/landing/CtaBand.jsx';
 import LandingFooter from '../components/landing/LandingFooter.jsx';
+import useDocumentTitle from '../hooks/useDocumentTitle.js';
 
 export default function LandingPage() {
+  useDocumentTitle('Thử đồ ảo bằng AI');
   const { user, logout } = useAuth();
 
   return (

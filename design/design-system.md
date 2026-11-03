@@ -72,6 +72,34 @@ SVG inline trong `frontend/src/components/icons.jsx`: stroke 1.6, 24x24, `curren
 
 Component dùng riêng landing nằm ở `components/landing/` (xem `screens.md`). Khi thêm Button/Input/Card/Modal dùng chung ở sprint sau, đặt vào `components/` và ghi vào bảng trên.
 
+## Thành phần admin dùng chung (Sprint 2)
+
+Chỉ dùng token hiện có (không thêm màu mới). Đặt trong `components/admin/` (riêng khu quản trị) hoặc `components/` (dùng chung) như cột "File dự kiến". Màn dùng: `screens.md` mục "Khu vực Admin".
+
+| Component | File dự kiến | Mô tả và quy tắc |
+|-----------|--------------|------------------|
+| DataTable | `components/admin/DataTable.jsx` | **Từ `sm`/`md`**: `<table>` trong thẻ `rounded-3xl bg-surface shadow-card overflow-hidden`; `<caption class="sr-only">`, `<th scope="col">` chữ `text-xs font-semibold uppercase tracking-wider text-muted` trên nền `canvas`; hàng `border-t border-line`, hover `bg-canvas`, ô `px-4 py-3`. **Mobile**: cùng dữ liệu hiển thị là `<ul>` thẻ `rounded-2xl border border-line bg-surface p-4` (tên đậm, thông tin phụ, hàng nút thao tác). Nhận `columns`, `rows`, `renderCard`; trạng thái loading/empty/error do trang quyết định qua `SkeletonRows`, `EmptyState`, `ErrorState`. Cột số (giá) căn phải, `tabular-nums` |
+| RowActions | trong `DataTable` | Nút "Sửa" (outline nhỏ) và "Xoá" (chữ `accent-dark`, viền `accent-dark/40`), icon + chữ, `min-h-11 min-w-11`, `aria-label` có tên đối tượng. Khi hàng đang xoá: `disabled opacity-60` |
+| Badge | `components/Badge.jsx` | `inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold`. Tone `neutral` (`bg-sand text-ink-soft`), `accent` (`bg-blush text-accent-dark`). Luôn có chữ (không chỉ màu); dạng link thêm gạch chân khi hover và focus ring |
+| EmptyState | `components/EmptyState.jsx` | Thẻ nét đứt `rounded-3xl border border-dashed border-line bg-surface p-10 text-center`: icon trong vòng `bg-blush`, tiêu đề `font-display text-xl`, mô tả `text-ink-soft`, tối đa 1 nút hành động (primary) + 1 link phụ. Props: `icon`, `title`, `description`, `action` |
+| ErrorState | `components/ErrorState.jsx` | `role="alert"`, thẻ `rounded-3xl border border-red-200 bg-red-50 p-6` (cùng cặp màu lỗi `red-600/700` của `TextField`): tiêu đề, `error.message`, nút **Thử lại** (outline). Mẫu giống khối lỗi tải ở `/profile` |
+| SkeletonRows | trong `DataTable` / trang | Khối `animate-pulse rounded-xl bg-sand`, dạng thumbnail 3:4 + 2 thanh chữ; bọc `role="status"` có chữ ẩn `sr-only` "Đang tải…" |
+| PriceField | `components/admin/PriceField.jsx` | Bọc `TextField`: `inputMode="numeric"`, hậu tố "₫" (`absolute inset-y-0 right-4 text-muted`, `pr-10`), hiển thị tách nghìn bằng dấu chấm, giá trị trả về cho form là **chuỗi chữ số thuần**; tối đa 9 chữ số; hint "Đơn vị: VND." Dùng `formatVnd(n)` (`Intl.NumberFormat('vi-VN')` + " ₫") ở `utils/format.js` cho mọi nơi hiển thị giá |
+| SelectField | `components/SelectField.jsx` | `<select>` cùng khung `TextField` (`min-h-12 rounded-2xl border bg-surface`, mũi tên chevron CSS, `appearance-none`), có label, hint, error (`aria-invalid`, `aria-describedby`) |
+| ProductImageField | `components/admin/ProductImageField.jsx` | Khung `aspect-[3/4] rounded-2xl bg-sand border border-dashed border-line`, `object-contain`; nút Chọn ảnh / Thay ảnh / Bỏ ảnh đã chọn (outline, `min-h-11`); lớp phủ spinner khi lưu; lỗi `role="alert"` dưới khung. Tách logic kiểm tra loại/dung lượng dùng chung với `AvatarField` (`utils/avatarCheck.js`) |
+| FormDialog | `components/FormDialog.jsx` | `<dialog>` gốc + `showModal` cùng kiểu `ConfirmDialog` (`max-w-md rounded-3xl bg-surface shadow-float backdrop:bg-ink/50`): tiêu đề `font-display text-2xl`, nội dung là form, nút Huỷ + Lưu; `busy` chặn Esc/bấm nền; trả focus về nút mở; focus ban đầu ở ô nhập đầu tiên (không phải nút) |
+| ConfirmDialog (mở rộng) | `components/profile/ConfirmDialog.jsx` (nên chuyển sang `components/`) | Tái dùng cho xoá danh mục / sản phẩm. Thêm props tuỳ chọn, giữ mặc định hiện tại để `/profile` không đổi: `busyLabel` (mặc định "Đang xoá…"), `confirmTone` (`'danger'` mặc định = `bg-accent-dark`; `'primary'` = `bg-accent`, dùng cho "Xem sản phẩm"). Focus ban đầu luôn ở nút hủy an toàn |
+| Toast (mở rộng) | `components/ToastProvider.jsx` | Hiện chỉ có 1 kiểu (pill `bg-ink`, `aria-live="polite"`, 4s). Thêm đối số tuỳ chọn `showToast(text, { tone })`: `'default'` như hiện tại; `'error'` nền `accent-dark`, tiền tố icon cảnh báo, vùng `role="alert"` (assertive) và giữ 6s. Chữ trắng trên `accent-dark` ~9:1. Vẫn một toast tại một thời điểm |
+| Icons mới | `components/icons.jsx` | Thêm cùng phong cách (stroke 1.6, 24x24): `PlusIcon`, `PencilIcon`, `TrashIcon`, `ImageIcon`, `AlertIcon`, `ArrowLeftIcon` |
+
+**Quy tắc áp dụng**
+- Nút nguy hiểm (Xoá) không dùng đỏ tươi mới: dùng `accent-dark`; hộp thoại luôn focus nút an toàn (Huỷ/Đóng) trước.
+- Lỗi luôn có chữ + vị trí cạnh nguồn lỗi: lỗi trường dưới ô, lỗi chung trong khung `role="alert"` phía trên nút gửi, lỗi thao tác nền (xoá) qua toast `tone: 'error'`.
+- Trạng thái mỗi danh sách bắt buộc đủ 4 nhánh: loading (skeleton) / empty (`EmptyState`) / error (`ErrorState` có Thử lại) / có dữ liệu.
+- Hiệu ứng: dòng mới vừa thêm `bg-blush` mờ dần 1.5s; dialog fade/scale 150ms; chỉ `transform`/`opacity`; tắt theo `prefers-reduced-motion` (đã cấu hình global).
+- Vùng chạm mọi nút/link trong bảng và thẻ >= 44x44px; thông tin không chỉ dựa vào màu (badge luôn có chữ).
+- Định dạng: giá "199.000 ₫", ngày `dd/MM/yyyy` (`toLocaleDateString('vi-VN')`).
+
 ## Accessibility cố định
 
 Semantic landmark (`header`, `nav`, `main`, `footer`), link "Bỏ qua tới nội dung chính", `:focus-visible` toàn cục, vùng chạm >= 44px, không truyền tải thông tin chỉ bằng màu, `lang="vi"`.
