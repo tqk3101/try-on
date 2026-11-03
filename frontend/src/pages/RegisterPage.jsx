@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import AuthLink from '../components/AuthLink.jsx';
 import PasswordStrength from '../components/PasswordStrength.jsx';
@@ -13,6 +13,7 @@ import {
   validatePassword,
   validateRegisterForm,
 } from '../utils/authValidation.js';
+import useDocumentTitle from '../hooks/useDocumentTitle.js';
 
 const FIELD_ORDER = ['email', 'password', 'confirmPassword'];
 const EMPTY_VALUES = { email: '', password: '', confirmPassword: '' };
@@ -24,6 +25,7 @@ function omit(object, key) {
 }
 
 export default function RegisterPage() {
+  useDocumentTitle('Đăng ký');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectParam = safeRedirect(searchParams.get('redirect'));
@@ -33,10 +35,6 @@ export default function RegisterPage() {
   const [emailTaken, setEmailTaken] = useState(false);
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    document.title = 'Đăng ký — Try-on';
-  }, []);
 
   function focusFirstInvalid(fieldErrors) {
     const first = FIELD_ORDER.find((name) => fieldErrors[name]);

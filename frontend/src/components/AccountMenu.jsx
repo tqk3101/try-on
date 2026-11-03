@@ -58,6 +58,18 @@ export default function AccountMenu({ user, onLogout, inline = false, onNavigate
       >
         Hồ sơ của tôi
       </Link>
+      {user.role === 'admin' && (
+        <Link
+          to={PATHS.admin}
+          className={itemClass}
+          onClick={() => {
+            setOpen(false);
+            onNavigate?.();
+          }}
+        >
+          Quản trị
+        </Link>
+      )}
       <button type="button" onClick={handleLogout} className={`${itemClass} text-accent-dark`}>
         Đăng xuất
       </button>

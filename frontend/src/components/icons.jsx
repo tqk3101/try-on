@@ -109,3 +109,46 @@ export function AlertIcon(props) {
     </svg>
   );
 }
+
+export function PlusIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+export function EditIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 20h4L19 9l-4-4L4 16z" />
+      <path d="m13.5 6.5 4 4" />
+    </svg>
+  );
+}
+
+export function TrashIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+    </svg>
+  );
+}
+
+export function FolderIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M3 6.5h6l2 2.5h10V19H3z" />
+    </svg>
+  );
+}
+
+export function ImageIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="3.5" y="5" width="17" height="14" rx="2" />
+      <circle cx="9" cy="10" r="1.5" />
+      <path d="m4 17 5-4.5 3.5 3L15 13.5l5 4.5" />
+    </svg>
+  );
+}

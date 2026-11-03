@@ -1,7 +1,8 @@
-# Flows Sprint 1: Auth & Profile
+# Flows: Auth, Profile & Kho hàng
 
-> Sprint 1, Task 4. Áp dụng cho US-01 (đăng ký, đăng nhập, logout, bảo vệ route) và US-02 (hồ sơ, ảnh toàn thân).
-> Đọc kèm `design/database/schema.md` (bảng `profiles`, bucket `avatars`). Task 5–7 cài đặt **đúng** theo tài liệu này. Nếu cần đổi, cập nhật tài liệu trước.
+> Sprint 1, Task 4: US-01 (đăng ký, đăng nhập, logout, bảo vệ route), US-02 (hồ sơ, ảnh toàn thân).
+> Sprint 2, Task 2: US-03 (danh mục), US-04 (sản phẩm) – khu vực admin và API đọc cho Sprint 3.
+> Đọc kèm `design/database/schema.md` (`profiles`, `categories`, `products`, bucket `avatars`, `products`). Code cài đặt **đúng** theo tài liệu này. Nếu cần đổi, cập nhật tài liệu trước.
 
 ## Mục lục
 1. [Danh sách flow](#1-danh-sách-flow)
@@ -22,6 +23,8 @@
 | [logout-protected-routes.md](logout-protected-routes.md) | Logout, middleware `requireAuth`, route guard frontend, xử lý 401, khôi phục phiên khi tải lại trang | Task 6 (middleware dùng ở Task 7) |
 | [profile.md](profile.md) | Xem/cập nhật hồ sơ `GET/PUT /api/user/profile` | Task 7 |
 | [avatar-upload.md](avatar-upload.md) | Upload ảnh toàn thân `PUT /api/user/profile/avatar` và xoá ảnh `DELETE /api/user/profile/avatar` (Supabase Storage) | Task 7 |
+| [category-management.md](category-management.md) | **Sprint 2.** Phân quyền admin (`requireAdmin`), CRUD `/api/admin/categories`, `GET /api/categories` | S2 Task 3, 4, 7 |
+| [product-management.md](product-management.md) | **Sprint 2.** CRUD `/api/admin/products` (multipart ảnh flat lay, bucket `products`), `GET /api/categories/:id/products` | S2 Task 5, 6, 7 |
 
 ## 2. Quy ước chung
 
@@ -75,6 +78,22 @@
 | PUT | `/api/user/profile/avatar` | Bearer | `multipart/form-data`, 1 file ở field `avatar` (jpeg/png, ≤ 5 MB) | **200** `data: { profile: Profile }` | 400 `AVATAR_REQUIRED` / `INVALID_UPLOAD`, 401, 413 `FILE_TOO_LARGE`, 415 `UNSUPPORTED_FILE_TYPE`, 429, 502 `UPLOAD_FAILED`, 500 |
 | DELETE | `/api/user/profile/avatar` | Bearer | – (không body) | **200** `data: { profile: Profile }` với `avatarUrl: null` (idempotent: chưa có ảnh vẫn 200) | 401, 429, 500 |
 
+**Sprint 2** (chi tiết, đối tượng `AdminCategory`, `Category`, `AdminProduct`, `Product`: `category-management.md` mục 3, `product-management.md` mục 1–2). Mọi `/api/admin/*`: Bearer + `requireAdmin` (role từ DB), lỗi chung 401 / 403 `FORBIDDEN` / 500.
+
+| Method | Path | Auth | Request | Thành công | Mã lỗi riêng |
+|--------|------|------|---------|------------|--------------|
+| GET | `/api/admin/categories` | Admin | – | 200 `data: { categories }` | – |
+| POST | `/api/admin/categories` | Admin | JSON `{ name }` | **201** `data: { category }` | 400 `VALIDATION_ERROR` / `BAD_REQUEST`, 409 `CATEGORY_EXISTS` |
+| PUT | `/api/admin/categories/:id` | Admin | JSON `{ name }` | 200 `data: { category }` | 400, 404 `CATEGORY_NOT_FOUND`, 409 `CATEGORY_EXISTS` |
+| DELETE | `/api/admin/categories/:id` | Admin | – | 200 `data: { id }` | 404 `CATEGORY_NOT_FOUND`, 409 `CATEGORY_NOT_EMPTY` |
+| GET | `/api/admin/products` | Admin | Query `categoryId?` | 200 `data: { products }` | 400 `VALIDATION_ERROR` |
+| GET | `/api/admin/products/:id` | Admin | – | 200 `data: { product }` | 404 `PRODUCT_NOT_FOUND` |
+| POST | `/api/admin/products` | Admin | multipart `name`, `price`, `categoryId`, file `image` | **201** `data: { product }` | 400 `VALIDATION_ERROR` / `INVALID_UPLOAD`, 413, 415, 429, 502 |
+| PUT | `/api/admin/products/:id` | Admin | multipart như POST, `image` tuỳ chọn | 200 `data: { product }` | như POST + 404 `PRODUCT_NOT_FOUND` |
+| DELETE | `/api/admin/products/:id` | Admin | – | 200 `data: { id }` | 404 `PRODUCT_NOT_FOUND` |
+| GET | `/api/categories` | Bearer (mọi role) | – | 200 `data: { categories }` | 401, 500 |
+| GET | `/api/categories/:id/products` | Bearer (mọi role) | – | 200 `data: { category, products }` | 401, 404 `CATEGORY_NOT_FOUND`, 500 |
+
 Không có endpoint logout phía server (xem `logout-protected-routes.md`). Mọi route lạ dưới `/api` trả 404 `NOT_FOUND` (đã có).
 
 ## 4. Bảng mã lỗi
@@ -89,12 +108,16 @@ Không có endpoint logout phía server (xem `logout-protected-routes.md`). Mọ
 | 401 | `AUTH_REQUIRED` | Vui lòng đăng nhập để tiếp tục. | Thiếu header `Authorization` / không đúng dạng `Bearer <token>` |
 | 401 | `TOKEN_EXPIRED` | Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại. | JWT hết hạn |
 | 401 | `INVALID_TOKEN` | Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại. | Chữ ký sai, payload sai, user của token không còn tồn tại |
-| 403 | `FORBIDDEN` | Bạn không có quyền thực hiện thao tác này. | Dự phòng cho `requireRole('admin')` (Epic 2), chưa dùng ở Sprint 1 |
+| 403 | `FORBIDDEN` | Bạn không có quyền thực hiện thao tác này. | Sprint 2: `requireAdmin` – user đã đăng nhập nhưng `profiles.role` (đọc từ DB) khác `admin` |
 | 404 | `NOT_FOUND` | Không tìm thấy tài nguyên yêu cầu. | Đã có |
+| 404 | `CATEGORY_NOT_FOUND` | Danh mục không tồn tại hoặc đã bị xoá. | Sprint 2: `:id` danh mục trên path không có / không phải uuid |
+| 404 | `PRODUCT_NOT_FOUND` | Sản phẩm không tồn tại hoặc đã bị xoá. | Sprint 2: `:id` sản phẩm trên path không có / không phải uuid |
 | 409 | `EMAIL_EXISTS` | Email này đã được đăng ký. | Register trùng email |
-| 413 | `FILE_TOO_LARGE` | Ảnh vượt quá 5MB. Vui lòng chọn ảnh nhỏ hơn. | multer `LIMIT_FILE_SIZE` |
+| 409 | `CATEGORY_EXISTS` | Danh mục này đã tồn tại. | Sprint 2: `23505` trên `categories_name_lower_unique` / `categories_slug_unique` |
+| 409 | `CATEGORY_NOT_EMPTY` | Danh mục còn {N} sản phẩm. Hãy xoá hoặc chuyển các sản phẩm sang danh mục khác trước khi xoá. | Sprint 2: xoá danh mục còn sản phẩm (đếm trước, hoặc `23503` khi race – message không kèm số) |
+| 413 | `FILE_TOO_LARGE` | Ảnh vượt quá 5MB. Vui lòng chọn ảnh nhỏ hơn. | multer `LIMIT_FILE_SIZE` (avatar, ảnh sản phẩm) |
 | 415 | `UNSUPPORTED_FILE_TYPE` | Chỉ hỗ trợ ảnh JPG hoặc PNG. | MIME hoặc magic bytes không phải jpeg/png |
-| 429 | `TOO_MANY_REQUESTS` | Bạn thao tác quá nhiều lần. Vui lòng thử lại sau ít phút. | Rate limit |
+| 429 | `TOO_MANY_REQUESTS` | Bạn thao tác quá nhiều lần. Vui lòng thử lại sau ít phút. | Rate limit (Sprint 2 thêm `productImageLimiter`: POST/PUT sản phẩm 60 / 15 phút theo user) |
 | 500 | `INTERNAL_ERROR` | Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau. | Lỗi không lường trước, lỗi DB (đã có) |
 | 502 | `UPLOAD_FAILED` | Không thể tải ảnh lên lúc này. Vui lòng thử lại. | Supabase Storage lỗi khi upload |
 | 0 (client) | `NETWORK_ERROR` | Không thể kết nối tới máy chủ. Vui lòng thử lại. | Fetch lỗi mạng (đã có trong `apiClient`) |
@@ -107,7 +130,14 @@ Không có endpoint logout phía server (xem `logout-protected-routes.md`). Mọ
 | `/register` | Chỉ khách (guest-only) | Đã đăng nhập → chuyển `/profile`. Đăng ký thành công → `/login` (router state `{ registered: true, email }`, giữ query `redirect` nếu có) |
 | `/login` | Chỉ khách | Đã đăng nhập → chuyển `redirect` hợp lệ hoặc `/profile`. Đọc query `redirect`, `reason=expired` và router state `registered`, `email` (banner đăng ký thành công + điền sẵn email) |
 | `/profile` | Bảo vệ (cần đăng nhập) | Đích mặc định **sau đăng nhập** ở Sprint 1 (chưa có dashboard). Không phải đích sau đăng ký |
+| `/admin` | Chỉ admin (Sprint 2) | Chuyển `/admin/categories`. Guest → `/login?redirect=`; user thường → trang 403 |
+| `/admin/categories` | Chỉ admin | Danh sách + thêm/sửa trong hộp thoại, xác nhận xoá |
+| `/admin/products` | Chỉ admin | Danh sách, query `?categoryId=` cho bộ lọc |
+| `/admin/products/new` | Chỉ admin | Form thêm (chọn sẵn danh mục nếu có `?categoryId=`) |
+| `/admin/products/:id/edit` | Chỉ admin | Form sửa (`GET /api/admin/products/:id`) |
 | `*` | Public | 404 |
+
+Route admin là đề xuất của BA; bố cục chi tiết do `design/screens.md` (agent-uiux) chốt, nếu đổi path thì cập nhật bảng này.
 
 Thêm `profile: '/profile'` vào `PATHS` và bật `AUTH_ENABLED = true` trong `frontend/src/routes/paths.js` khi Task 5–6 xong.
 
@@ -133,6 +163,13 @@ Thêm `profile: '/profile'` vào `PATHS` và bật `AUTH_ENABLED = true` trong `
 | D16 | Cập nhật hồ sơ | `PUT` thay toàn bộ các trường sửa được: `heightCm`, `weightKg` **bắt buộc**; `displayName` và `phone` tuỳ chọn (thiếu/`""`/`null` → `null`). Trường khác (`email`, `role`, `avatarUrl`, `password`…) **bị bỏ qua** | US-02: thiếu chiều cao/cân nặng là lỗi; email khoá |
 | D17 | Thư viện mới cho backend | `multer` (multipart, `memoryStorage`, `limits.fileSize = 5 MB`, `files = 1`), `express-rate-limit` (`limit`, `standardHeaders: 'draft-8'`). agent-coder cài bản mới nhất ở thời điểm cài đặt | Chuẩn de-facto cho Express, hỗ trợ Express 5 |
 | D18 | Xoá ảnh toàn thân | Endpoint riêng `DELETE /api/user/profile/avatar`, **thực hiện ngay** khi user xác nhận (không gộp vào nút Lưu). Server: đặt `avatar_path = null` **trước**, rồi xoá object Storage best-effort. Idempotent: chưa có ảnh vẫn trả 200. Dùng chung `avatarLimiter`. Không thêm mã lỗi mới | Xoá là hành động rõ ràng, độc lập với việc sửa số đo; cập nhật DB trước để không bao giờ trỏ tới file đã mất (file mồ côi nếu xoá Storage lỗi chỉ tốn dung lượng). Chi tiết: `avatar-upload.md` mục 4 |
+| D19 | Kiểm tra admin (Sprint 2) | Middleware `requireAdmin` sau `requireAuth`, **SELECT `role` từ `profiles`** (không tin claim `role` trong JWT); không có dòng → 401 `INVALID_TOKEN`, khác admin → 403 `FORBIDDEN` | JWT sống 7 ngày, hạ quyền phải có hiệu lực ngay; thêm 1 query/request admin là chấp nhận được. `requireRole` cũ (đọc JWT) không dùng cho `/api/admin/*` |
+| D20 | `categoryId` không tồn tại khi tạo/sửa sản phẩm | **400 `VALIDATION_ERROR`** + `fields.categoryId` (cả khi DB trả `23503`) | Là dữ liệu body, không phải tài nguyên trên URL; 404 ở endpoint sản phẩm nghĩa là "sản phẩm không tồn tại". Form hiện lỗi đúng ô |
+| D21 | Giá sản phẩm | Chuỗi chữ số `^[1-9][0-9]*$`, **1 – 100.000.000** VND | VND không có số lẻ; chặn nhập "199.000"/"199,000" mơ hồ; trần 100 triệu đủ cho quần áo, chặn gõ nhầm số 0 |
+| D22 | Phân trang danh sách | **Không** ở Sprint 2 | Dữ liệu demo nhỏ; xem lại khi > 200 sản phẩm hoặc > 500 ms, thêm `limit`/`cursor` tuỳ chọn không phá contract |
+| D23 | Signed URL ảnh sản phẩm | TTL **3600 giây** (như avatar); danh sách ký theo lô `createSignedUrls`; ký lỗi → `imageUrl: null` | Một cơ chế cho cả 2 bucket private |
+| D24 | Sắp xếp | Danh mục (admin + công khai): `created_at asc, id`. Sản phẩm admin: `created_at desc, id desc`. Sản phẩm công khai: `created_at asc, id` | Giữ thứ tự seed của PB; admin thấy sản phẩm vừa thêm; thứ tự công khai ổn định, khớp index, cố định "sản phẩm đầu tiên" US-05 |
+| D25 | Upload ảnh sản phẩm | multipart field `image`; POST bắt buộc, PUT tuỳ chọn; PUT luôn multipart; ảnh thiếu báo trong `fields.image` (không dùng mã riêng như `AVATAR_REQUIRED`) | Một parser cho cả 2 endpoint; form nhiều trường hiện mọi lỗi một lần |
 
 ## 7. Câu hỏi còn mở (cần người dùng chốt)
 
@@ -147,6 +184,10 @@ Các mục dưới đã có **giá trị mặc định** trong flow; dev làm th
 | ~~Q5~~ | ~~Có cần nút xoá ảnh không?~~ | **Đã chốt** (2026-11-03): có làm nút xoá ảnh ở Sprint 1. Xem D18 |
 | ~~Q6~~ | ~~Có trường phone không?~~ | **Đã chốt** (2026-11-03): **có**, tuỳ chọn, SĐT di động VN, thêm cột bằng migration `004` (xem `schema.md` mục 3, 8 và `profile.md`) |
 | ~~Q7~~ | ~~Sau logout về `/` hay `/login`?~~ | **Đã chốt** (2026-11-03): về `/` kèm toast "Bạn đã đăng xuất." |
+| Q8 | (Sprint 2) `GET /api/categories` có ẩn danh mục chưa có sản phẩm không? | **Đã chốt 2026-11-03: ẩn.** API công khai chỉ trả danh mục có >= 1 sản phẩm (không trả `productCount`); `GET /api/categories/:id/products` với danh mục rỗng vẫn 200 + `[]`; API admin trả tất cả. Cập nhật `product-management.md` mục API công khai khi làm Task 7 |
+| Q9 | (Sprint 2) Trần giá 100.000.000 ₫ có phù hợp? | Giữ 100.000.000 (D21) |
+| Q10 | (Sprint 2) Có cần kiểm tra tỷ lệ/kích thước ảnh flat lay (như avatar) không? | **Đã chốt 2026-11-03:** kiểm tra kích thước tối thiểu 400×400 px (cả hai cạnh, lỗi 400 `fields.image`), không kiểm tra tỷ lệ; xem lại giới hạn tối đa ở Epic 3 khi biết yêu cầu đầu vào của model thử đồ |
+| Q11 | (Sprint 2) Sprint 3 truy cập danh mục theo `id` hay `slug`? | Theo `id` (`/api/categories/:id/products`); thêm tra theo slug ở Sprint 3 nếu cần URL thân thiện |
 
 ## 8. Đề xuất thay đổi schema
 

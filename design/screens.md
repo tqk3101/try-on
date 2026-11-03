@@ -186,3 +186,243 @@ Code: `frontend/src/components/AccountMenu.jsx`; gắn vào `MainLayout` và `co
 - **Mobile (< 768px):** ở `LandingHeader`, khối `AccountMenu inline` nằm trong menu hamburger thay cho hai nút auth: "Đăng nhập với {email}", Hồ sơ của tôi, Đăng xuất (hàng cao >= 44px); bấm mục nào cũng đóng menu. Ở `MainLayout` (header chỉ logo) nút pill luôn hiện bên phải.
 - Landing khi đã đăng nhập: không hiện Đăng nhập/Đăng ký.
 - Props: `user` ({ email, displayName }), `onLogout`, `inline`, `onNavigate`. Đã nối `useAuth()` ở `MainLayout` và `LandingPage`. Tên hiển thị sau khi lưu hồ sơ chưa tự cập nhật (TODO ở `ProfileForm.jsx`).
+
+---
+
+# Khu vực Admin (Sprint 2)
+
+Bám `design/flows/category-management.md` (mục 6), `product-management.md` (mục 9), route ở `design/flows/README.md` mục 5 (**không đổi route nào**). Trạng thái code: `AdminLayout`, `RequireAdmin`, `ForbiddenPage` đã có (Task 3); các trang danh sách/form dưới đây thay `AdminPlaceholderPage` ở Task 4–6. Thành phần dùng chung mới (`DataTable`, `Badge`, `EmptyState`, `ErrorState`, `PriceField`, `FormDialog`...) ghi ở mục "Thành phần admin dùng chung" của `design/design-system.md`.
+
+**Quy ước chung cho các màn admin**
+- Quyền: chỉ `role = admin` (`RequireAuth` -> `RequireAdmin`). Guest -> `/login?redirect=<path>`; user thường -> `ForbiddenPage` (không render layout admin). API trả 403 giữa phiên (bị hạ quyền) -> thay nội dung trang bằng `ForbiddenPage`.
+- Thứ bậc heading: `h1` "Quản trị" (AdminLayout), mỗi trang là `h2` (`font-display`).
+- `document.title` (hook `useDocumentTitle`, Sprint 2 Task 8): "Quản lý danh mục — Try-on", "Quản lý sản phẩm — Try-on", "Thêm sản phẩm — Try-on", "Sửa sản phẩm — Try-on", "Không có quyền truy cập — Try-on".
+- Message lỗi từ server hiển thị nguyên văn `error.message` (tiếng Việt); rẽ nhánh theo `error.code`. 401 do `apiClient` xử lý chung (về `/login?redirect=…&reason=expired`), trang không tự điều hướng.
+- Không cập nhật lạc quan: chỉ đổi giao diện khi server trả thành công. Nút gửi `disabled` khi đang gửi để chặn gửi lặp.
+- Toast dùng `ToastProvider`; thông báo lỗi dùng `tone: 'error'` (cần mở rộng, xem design-system).
+
+---
+
+## Admin layout — `/admin` (chuyển `/admin/categories`)
+
+Code: `components/admin/AdminLayout.jsx` (nằm trong `MainLayout`, bọc bởi `RequireAdmin`).
+
+### Mục đích
+Khung chung cho các trang quản trị: tiêu đề và menu chuyển giữa Danh mục / Sản phẩm.
+
+### Quyền truy cập
+Admin. `/admin` (index) `Navigate replace` tới `/admin/categories`.
+
+### Các thành phần chính
+1. **Tiêu đề** `h1` "Quản trị".
+   - Trạng thái: tĩnh.
+2. **Menu quản trị** `<nav aria-label="Menu quản trị">`: 2 mục dạng pill "Danh mục", "Sản phẩm" (`NavLink`).
+   - Tương tác: bấm/Enter chuyển trang. Mục đang chọn: nền `accent`, chữ trắng, `aria-current="page"` (NavLink tự gắn). "Sản phẩm" cũng active ở `/admin/products/new` và `/admin/products/:id/edit`.
+   - Trạng thái: default / hover (`bg-ink/5`) / focus-visible (outline 2px accent toàn cục) / active. Vùng chạm `min-h-11`.
+   - Hiệu ứng: `transition-colors`.
+3. **Vùng nội dung** (`Outlet`) cách menu 24px, trong container `max-w-5xl` của `MainLayout`.
+4. **Link "Quản trị"** trong `AccountMenu` (chỉ khi `role = admin`) dẫn tới `/admin`.
+
+### Quyết định thiết kế
+- **Không dùng sidebar**: chỉ 2 mục nên menu ngang (tab pill) gọn hơn, không tốn chiều ngang trên tablet/mobile, giữ bố cục một cột của `MainLayout`. Khi Epic 4 thêm "Đơn hàng", có thể chuyển sang sidebar từ `lg` mà không đổi route.
+
+### Responsive
+- Mobile (< 640px): menu một hàng, `overflow-x-auto` nếu hẹp (đủ 2 mục ở 320px); không tràn ngang trang.
+- Tablet (640–1024px) và Desktop (> 1024px): menu căn trái, đường kẻ `border-b border-line` bên dưới.
+
+### Navigation
+- Đến màn hình này từ: `AccountMenu` (Quản trị), URL trực tiếp, `/login?redirect=/admin…`.
+- Từ màn hình này đến: `/admin/categories`, `/admin/products`.
+
+### Ghi chú
+- A11y: landmark `nav` có nhãn; thứ tự Tab: menu -> nội dung. `/admin/xyz` không tồn tại -> 404 chung (`*`).
+
+---
+
+## Quản lý danh mục — `/admin/categories`
+
+Code dự kiến: `pages/admin/AdminCategoriesPage.jsx`, `components/admin/CategoryFormDialog.jsx`, API qua `services/adminApi.js`. Flow: `category-management.md`. Story: `sprints/US-03.md`.
+
+### Mục đích
+Xem danh sách danh mục (kèm số sản phẩm), thêm, đổi tên, xoá danh mục.
+
+### Quyền truy cập
+Admin.
+
+### Các thành phần chính
+1. **Thanh tiêu đề trang**: `h2` "Danh mục", mô tả "Quản lý các danh mục quần áo hiển thị trong phòng thử đồ.", nút **"Thêm danh mục"** (primary, icon dấu cộng, `min-h-11`).
+   - Tương tác: mở hộp thoại thêm. Trạng thái: default / hover / focus / disabled (khi đang tải danh sách).
+   - Mobile: nút full width dưới mô tả; từ `sm` nằm bên phải cùng hàng.
+2. **Danh sách danh mục** (`DataTable`), thứ tự theo server (`created_at asc`):
+   - Cột: **Tên** (đậm), **Đường dẫn (slug)** (`muted`, font mono nhỏ), **Sản phẩm** (badge), **Ngày tạo** (`dd/MM/yyyy`, `vi-VN`), **Thao tác** (Sửa, Xoá).
+   - Badge: `0` -> "0 sản phẩm" nền `sand` chữ `ink-soft`; `N > 0` -> "N sản phẩm" nền `blush` chữ `accent-dark`, là **link** tới `/admin/products?categoryId=<id>`.
+   - Nút hàng "Sửa" / "Xoá": icon + chữ (chữ ẩn trên mobile rất hẹp, luôn có `aria-label` đầy đủ: "Sửa danh mục Váy", "Xoá danh mục Váy"), `min-h-11 min-w-11`.
+3. **Hộp thoại Thêm / Sửa** (`CategoryFormDialog` dựa trên `FormDialog`, `<dialog>` gốc `showModal`, cùng kiểu `ConfirmDialog`: `max-w-md rounded-3xl`, `backdrop:bg-ink/50`):
+   - Tiêu đề "Thêm danh mục" / "Sửa danh mục"; ô **Tên danh mục** (`TextField`, autofocus, `autoComplete="off"`; khi sửa điền sẵn). Hint: "Tối đa 50 ký tự. Không phân biệt chữ hoa, chữ thường."
+   - Nút "Huỷ" (outline) và "Lưu" (primary). Khi gửi: "Đang lưu…", nút và ô khoá; Esc/bấm nền bị chặn.
+   - Enter trong ô = Lưu; Esc = Huỷ; bấm nhiều lần chỉ gửi 1 request. Sửa mà tên (sau chuẩn hoá) không đổi: đóng hộp thoại, không gọi API.
+   - Hiệu ứng: dialog fade/scale nhẹ (`opacity`/`transform`, 150ms), tắt khi `prefers-reduced-motion`.
+4. **Hộp thoại xác nhận xoá** (tái dùng `ConfirmDialog`):
+   - `productCount = 0`: tiêu đề "Xoá danh mục?"; mô tả "Xoá danh mục “{tên}”? Thao tác này không thể hoàn tác."; nút "Huỷ" (focus ban đầu) và "Xoá danh mục" (nguy hiểm, `accent-dark`); khi gửi "Đang xoá…".
+   - `productCount > 0` (chặn phía client theo flow): tiêu đề "Không thể xoá danh mục"; mô tả "Danh mục “{tên}” còn {N} sản phẩm. Hãy xoá hoặc chuyển các sản phẩm sang danh mục khác trước khi xoá."; nút "Đóng" (focus ban đầu) và **"Xem sản phẩm"** (primary, điều hướng `/admin/products?categoryId=<id>`). Cần `ConfirmDialog` nhận `confirmTone="primary"`.
+
+- **Ghi chú (Q8):** danh mục chưa có sản phẩm (`productCount = 0`) vẫn hiện ở trang admin nhưng **chưa hiện phía người mua** (`GET /api/categories` ẩn danh mục rỗng); thêm sản phẩm đầu tiên thì danh mục mới xuất hiện.
+- **Tiêu đề tab:** mọi route đặt `document.title` bằng hook `useDocumentTitle` theo định dạng "<Tên trang> — Try-on" (landing: "Thử đồ ảo bằng AI — Try-on").
+
+### Trạng thái
+- **Đang tải**: skeleton 4 hàng (`animate-pulse`), `role="status"` + chữ ẩn "Đang tải danh mục…"; nút "Thêm danh mục" `disabled`.
+- **Rỗng** (`EmptyState`): icon, "Chưa có danh mục nào", "Tạo danh mục đầu tiên để bắt đầu thêm sản phẩm.", nút "Thêm danh mục".
+- **Lỗi tải** (500/`NETWORK_ERROR`, `ErrorState` `role="alert"`): "Không tải được danh mục", `error.message`, nút **Thử lại**. Không hiện bảng rỗng.
+- **403**: thay cả trang bằng `ForbiddenPage`.
+- **Thành công**: đóng hộp thoại, cập nhật/thêm dòng (dòng mới ở cuối, nền `blush` mờ dần ~1.5s; bỏ hiệu ứng khi reduced-motion), toast "Đã lưu danh mục." (thêm/sửa) hoặc "Đã xoá danh mục." (xoá).
+- **Lỗi form** (giữ hộp thoại và giá trị đã nhập):
+  - Client: rỗng sau trim -> "Vui lòng nhập tên danh mục."; > 50 ký tự (đếm code point) -> "Tên danh mục tối đa 50 ký tự."
+  - 400 `VALIDATION_ERROR`: `fields.name` dưới ô (kể cả "Tên danh mục phải chứa ít nhất một chữ cái hoặc chữ số.").
+  - 409 `CATEGORY_EXISTS`: "Danh mục này đã tồn tại." dưới ô tên.
+  - 404 `CATEGORY_NOT_FOUND`: đóng hộp thoại, toast lỗi "Danh mục không còn tồn tại.", tải lại danh sách.
+  - 500 / 429 / `NETWORK_ERROR`: khung `role="alert"` đỏ nhạt trong hộp thoại với `error.message`, nút Lưu bật lại.
+  - Có lỗi trường thì focus về ô tên (`aria-invalid`, `aria-describedby` qua `TextField`).
+- **Lỗi xoá**: 409 `CATEGORY_NOT_EMPTY` -> đóng hộp thoại, toast lỗi với `error.message`, tải lại danh sách để cập nhật số sản phẩm; 404 -> toast "Danh mục không còn tồn tại.", tải lại; 500/mạng -> toast lỗi, giữ dòng.
+
+### Responsive
+- Mobile (< 640px): không dùng bảng ngang; mỗi danh mục là một **thẻ** (`<li>` trong `<ul>`, `rounded-2xl border border-line bg-surface p-4`): tên, badge, slug nhỏ bên dưới, hàng nút Sửa / Xoá (`min-h-11`). Ẩn "Ngày tạo".
+- Tablet (640–1024px): `<table>` 4 cột (Tên, Sản phẩm, Ngày tạo, Thao tác); từ `md` hiện thêm Slug.
+- Desktop (> 1024px): bảng đủ 5 cột trong thẻ `rounded-3xl bg-surface shadow-card`, hàng ~64px, hover hàng `bg-canvas`.
+- Hộp thoại: `w-[calc(100%-2rem)] max-w-md`; nút xếp dọc trên mobile (Lưu trên, Huỷ dưới), ngang từ `sm`.
+
+### Navigation
+- Đến màn hình này từ: menu admin, `/admin`, link "Xem sản phẩm" từ `/admin/products`.
+- Từ màn hình này đến: `/admin/products?categoryId=<id>`.
+
+### Ghi chú
+- A11y bảng: `<table>` có `<caption class="sr-only">Danh sách danh mục</caption>`, `<th scope="col">`; cột Thao tác có `<th>` ẩn thị giác "Thao tác". Hộp thoại trả focus về nút đã mở. Sau khi xoá thành công (hàng biến mất) focus chuyển về `h2` (`tabIndex={-1}`).
+- Số sản phẩm luôn có chữ "N sản phẩm", không chỉ dựa vào màu. Tên dài (50 ký tự): `break-words`.
+
+---
+
+## Danh sách sản phẩm — `/admin/products`
+
+Code dự kiến: `pages/admin/AdminProductsPage.jsx`. Flow: `product-management.md` mục 9. Story: `sprints/US-04.md`.
+
+### Mục đích
+Xem sản phẩm (mới nhất trước), lọc theo danh mục, thêm / sửa / xoá.
+
+### Quyền truy cập
+Admin.
+
+### Các thành phần chính
+1. **Thanh tiêu đề trang**: `h2` "Sản phẩm", mô tả "Quản lý quần áo và ảnh trải phẳng (flat lay) dùng cho thử đồ.", nút **"Thêm sản phẩm"** (primary, link tới `/admin/products/new`, kèm `?categoryId=` nếu đang lọc).
+2. **Bộ lọc danh mục**: `<select>` nhãn hiển thị "Lọc theo danh mục", tuỳ chọn đầu "Tất cả danh mục", rồi danh mục từ `GET /api/admin/categories`. Chọn -> cập nhật query `?categoryId=` (`replace`). Bên cạnh là "N sản phẩm" (`aria-live="polite"`). `categoryId` sai định dạng (400) -> bỏ query, coi như không lọc. `categoryId` hợp lệ nhưng không tồn tại -> danh sách rỗng (theo flow), select hiện "Tất cả danh mục".
+3. **Danh sách sản phẩm** (`DataTable`): cột **Ảnh**, **Tên**, **Giá**, **Danh mục** (badge), **Thao tác** (Sửa, Xoá).
+   - Thumbnail: khung `aspect-[3/4]` rộng 48–64px, `rounded-xl bg-sand`, `object-contain` (không méo/cắt), `loading="lazy"`. `alt=""` khi tên đứng ngay cạnh (ảnh trang trí), nếu không thì `alt="Ảnh {tên}"`.
+   - `imageUrl = null` hoặc `<img onError>`: gọi lại GET danh sách **một lần** để lấy signed URL mới (hết hạn sau 1 giờ); vẫn lỗi/`null` -> placeholder (icon ảnh + chữ nhỏ "Không có ảnh"), `role="img"` `aria-label="Không tải được ảnh sản phẩm"`.
+   - Giá: `Intl.NumberFormat('vi-VN').format(price) + ' ₫'` -> "199.000 ₫", căn phải (`tabular-nums`).
+   - Nút "Sửa" -> `/admin/products/:id/edit`; "Xoá" mở hộp thoại; `aria-label` "Sửa sản phẩm {tên}", "Xoá sản phẩm {tên}".
+4. **Hộp thoại xác nhận xoá** (tái dùng `ConfirmDialog`): tiêu đề "Xoá sản phẩm?"; mô tả "Xoá sản phẩm “{tên}”? Ảnh sản phẩm cũng bị xoá và không thể hoàn tác."; nút "Huỷ" (focus ban đầu) / "Xoá sản phẩm"; busy "Đang xoá…".
+
+### Trạng thái
+- **Đang tải**: skeleton 5 hàng/thẻ (ô ảnh 3:4 + 2 thanh chữ), `role="status"` "Đang tải sản phẩm…"; bộ lọc `disabled` tới khi có danh mục.
+- **Chưa có danh mục nào**: `EmptyState` "Cần tạo danh mục trước", "Sản phẩm phải thuộc một danh mục.", link-nút "Tới quản lý danh mục" (`/admin/categories`); ẩn nút Thêm sản phẩm.
+- **Rỗng** (có danh mục, không có sản phẩm): không lọc -> "Chưa có sản phẩm nào", "Thêm sản phẩm đầu tiên cùng ảnh flat lay.", nút "Thêm sản phẩm". Đang lọc -> "Danh mục này chưa có sản phẩm", nút "Thêm sản phẩm vào danh mục này" và nút chữ "Xem tất cả sản phẩm" (xoá bộ lọc).
+- **Lỗi tải** (500/mạng): `ErrorState` "Không tải được sản phẩm", `error.message`, **Thử lại**. 403 -> `ForbiddenPage`.
+- **Xoá**: 200 -> bỏ khỏi danh sách, toast "Đã xoá sản phẩm."; 404 -> bỏ khỏi danh sách, toast lỗi "Sản phẩm không còn tồn tại."; 500/mạng -> toast lỗi `error.message`, giữ dòng.
+- Toast "Đã lưu sản phẩm." hiển thị ở trang này sau khi form lưu xong.
+
+### Responsive
+- Mobile (< 640px): danh sách **thẻ** (`<ul>`): thumbnail 3:4 rộng 64px bên trái; bên phải tên (tối đa 2 dòng), giá, badge danh mục; hàng nút Sửa / Xoá (`min-h-11`) bên dưới. Bộ lọc và nút Thêm full width.
+- Tablet (640–1024px): bảng gồm Ảnh, Tên, Giá, Thao tác; Danh mục hiện dưới tên dạng badge nhỏ (cột riêng từ `md`).
+- Desktop (> 1024px): bảng 5 cột trong thẻ `rounded-3xl shadow-card`; hàng ~88px.
+
+### Navigation
+- Đến màn hình này từ: menu admin, badge/"Xem sản phẩm" ở `/admin/categories`, trả về từ form sản phẩm.
+- Từ màn hình này đến: `/admin/products/new`, `/admin/products/:id/edit`, `/admin/categories` (khi chưa có danh mục).
+
+### Ghi chú
+- Không phân trang (D22). Ảnh `loading="lazy"`.
+- A11y: `<table>` có caption ẩn "Danh sách sản phẩm"; sau xoá thành công focus về `h2`; tên/giá render text thuần (React escape).
+
+---
+
+## Form thêm / sửa sản phẩm — `/admin/products/new`, `/admin/products/:id/edit`
+
+Code dự kiến: `pages/admin/AdminProductFormPage.jsx` (một component, chế độ theo route), `components/admin/ProductImageField.jsx`, `components/admin/PriceField.jsx`. Flow: `product-management.md` mục 5, 6, 9.
+
+### Mục đích
+Nhập tên, giá (VND), danh mục và đúng 1 ảnh flat lay; khi sửa có thể giữ ảnh cũ hoặc thay ảnh mới.
+
+### Quyền truy cập
+Admin. `/admin/products/new?categoryId=<id>` chọn sẵn danh mục nếu id hợp lệ.
+
+### Các thành phần chính
+1. **Liên kết quay lại** "← Danh sách sản phẩm" (giữ `?categoryId=` nếu mở từ bộ lọc) và `h2` "Thêm sản phẩm" / "Sửa sản phẩm".
+2. **Khối ảnh flat lay** (`ProductImageField`): khung `aspect-[3/4] rounded-2xl bg-sand border border-dashed border-line`, `object-contain`, rộng tối đa 16rem.
+   - Thêm, chưa chọn: placeholder icon ảnh + "Chưa chọn ảnh" + nút **"Chọn ảnh"** (input file `accept="image/jpeg,image/png"` ẩn bằng `sr-only`, nút/label là phần tử focus được, Enter/Space mở hộp chọn file).
+   - Đã chọn: xem trước bằng `URL.createObjectURL`, dòng "Ảnh mới (chưa lưu)", nút **"Chọn ảnh khác"** và **"Bỏ ảnh đã chọn"** (phía client). Khi sửa, bỏ ảnh mới -> quay về ảnh hiện tại.
+   - Sửa, chưa chọn ảnh mới: hiện ảnh hiện tại (signed URL), nút **"Thay ảnh"**, chú thích "Giữ nguyên ảnh hiện tại nếu không chọn ảnh mới."
+   - Gợi ý tĩnh (gắn `aria-describedby` cho input file): "Ảnh trải phẳng, nền trơn, thấy toàn bộ sản phẩm. JPG hoặc PNG, tối đa 5MB, tối thiểu 400×400 px." Không kiểm tra tỉ lệ; ảnh có cạnh ngắn < 400 px bị chặn (Q10).
+   - Lỗi chặn phía client (bỏ file, giữ ảnh đang có): loại khác jpg/jpeg/png -> "Chỉ hỗ trợ ảnh JPG hoặc PNG."; > 5MB -> "Ảnh vượt quá 5MB. Vui lòng chọn ảnh nhỏ hơn."; cạnh ngắn < 400 px -> "Ảnh quá nhỏ, cần tối thiểu 400×400 px." (tái dùng phần loại/dung lượng của `utils/avatarCheck.js`, bỏ phần cảnh báo tỉ lệ). Lỗi `role="alert"` dưới khung ảnh.
+   - Ảnh hiện tại lỗi tải (`onError`, URL hết hạn): gọi lại `GET /api/admin/products/:id` một lần; vẫn lỗi -> placeholder "Không tải được ảnh hiện tại. Bạn vẫn có thể chọn ảnh mới." (vẫn lưu được nếu không đổi ảnh).
+   - Hiệu ứng: xem trước fade-in (`opacity`, 200ms).
+3. **Ô Tên sản phẩm** (`TextField`, bắt buộc, `autoComplete="off"`), hint "Tối đa 100 ký tự."
+4. **Ô Giá** (`PriceField` bọc `TextField`): `type="text"`, `inputMode="numeric"`, `autoComplete="off"`, hậu tố "₫" cố định trong ô, hint "Đơn vị: VND. Ví dụ: 199.000". Khi gõ chỉ giữ chữ số, hiển thị tách nghìn bằng dấu chấm ("199.000"), tối đa 9 chữ số; **gửi chuỗi chữ số thuần** ("199000"). Dán "199,000" hay "199.000đ" được làm sạch về chữ số; giữ vị trí con trỏ ổn định khi định dạng lại.
+5. **Ô Danh mục** (`<select>` cùng kiểu `TextField`, `min-h-12 rounded-2xl`, nhãn "Danh mục"): tuỳ chọn đầu "Chọn danh mục" (value rỗng), rồi danh mục từ API. Khi sửa chọn sẵn danh mục hiện tại.
+6. **Hàng nút**: "Lưu sản phẩm" (primary, `min-h-12`) và "Huỷ" (outline, về danh sách). Đang lưu: "Đang lưu…" + spinner, nút khoá, ô `readOnly`/`disabled`, lớp phủ "Đang tải ảnh lên…" trên khung ảnh khi có file. Khi sửa: Lưu `disabled` nếu chưa có thay đổi (tên/giá/danh mục không đổi và không có ảnh mới).
+
+### Trạng thái
+- **Đang tải** (khi sửa, và khi tải danh mục): skeleton khung ảnh 3:4 + 3 ô + nút, `role="status"` "Đang tải sản phẩm…".
+- **Lỗi tải** (500/mạng, hoặc tải danh mục lỗi): `ErrorState` "Không tải được thông tin" + **Thử lại**. Sửa mà 404 `PRODUCT_NOT_FOUND`: toast lỗi "Sản phẩm không còn tồn tại.", về `/admin/products`.
+- **Chưa có danh mục**: thay form bằng `EmptyState` "Cần tạo danh mục trước" + link "Tới quản lý danh mục".
+- **Validate client** (bấm Lưu; tên/giá còn kiểm tra khi rời ô nếu đã nhập), cùng quy tắc và message với server:
+  - Tên: rỗng -> "Vui lòng nhập tên sản phẩm."; > 100 ký tự -> "Tên sản phẩm tối đa 100 ký tự."
+  - Giá: rỗng -> "Vui lòng nhập giá sản phẩm."; 0 hoặc không phải số nguyên dương -> "Giá phải là số nguyên dương (VND), không có dấu chấm hoặc phẩy."; > 100.000.000 -> "Giá tối đa 100.000.000 ₫."
+  - Danh mục: chưa chọn -> "Vui lòng chọn danh mục."
+  - Ảnh: thêm mà chưa chọn -> "Vui lòng chọn ảnh sản phẩm."
+  - Focus ô lỗi đầu tiên theo thứ tự Tên, Giá, Danh mục, Ảnh; sửa ô nào lỗi ô đó biến mất.
+- **Lỗi server**:
+  - 400 `VALIDATION_ERROR`: map `error.fields` (`name`, `price`, `categoryId`, `image`) vào từng ô, hiện mọi lỗi cùng lúc. `fields.categoryId` -> tải lại danh mục và đặt select về "Chọn danh mục".
+  - 413 `FILE_TOO_LARGE` / 415 `UNSUPPORTED_FILE_TYPE`: message dưới khung ảnh, bỏ file đã chọn, giữ các trường khác.
+  - 400 `INVALID_UPLOAD`, 429, 502 `UPLOAD_FAILED`, 500, `NETWORK_ERROR`: khung `role="alert"` đỏ nhạt phía trên nút Lưu với `error.message`; **giữ dữ liệu và ảnh đã chọn**, nút bật lại.
+  - 404 `PRODUCT_NOT_FOUND` (sửa): toast lỗi, về danh sách.
+- **Thành công**: thu hồi objectURL, `navigate('/admin/products' + query)` kèm toast "Đã lưu sản phẩm.".
+
+### Responsive
+- Mobile (< 640px): một cột: ảnh (tối đa 16rem, căn giữa) rồi các ô; Lưu full width, Huỷ bên dưới.
+- Tablet (640–1024px): thẻ form `max-w-xl`; từ `md` (768px) hai cột: ảnh trái 16rem, form phải.
+- Desktop (> 1024px): hai cột, ảnh 18rem; thẻ trắng `rounded-3xl shadow-card p-8`.
+
+### Navigation
+- Đến màn hình này từ: "Thêm sản phẩm" / "Sửa" ở `/admin/products`.
+- Từ màn hình này đến: `/admin/products` (Lưu thành công, Huỷ, liên kết quay lại), `/admin/categories` (khi chưa có danh mục).
+
+### Ghi chú
+- `FormData` gồm `name`, `price` (chuỗi chữ số), `categoryId`, `image` (chỉ khi có file); PUT luôn gửi `FormData` (D25).
+- A11y: mọi ô có `<label htmlFor>`; lỗi `aria-invalid` + `aria-describedby`; kết quả chọn ảnh báo qua `aria-live="polite"` ("Đã chọn ảnh mới"), không đọc/ghi tên file gốc ra log.
+- Chặn gửi lặp; không cần cảnh báo rời trang khi chưa lưu (Sprint 2). Trên mobile `accept` cho phép chụp trực tiếp hoặc chọn từ thư viện.
+
+---
+
+## Trang 403 — hiển thị tại mọi route `/admin/*` với user không phải admin
+
+Code: `pages/ForbiddenPage.jsx` (dùng bởi `RequireAdmin`, và khi API admin trả 403).
+
+### Mục đích
+Báo user thường (hoặc admin vừa bị hạ quyền) không có quyền, **không lộ** layout/nội dung quản trị.
+
+### Quyền truy cập
+User đã đăng nhập không phải admin. Guest bị chuyển `/login?redirect=`, không thấy trang này.
+
+### Các thành phần chính
+1. Số "403" lớn màu `muted`, `h1` "Bạn không có quyền truy cập", mô tả "Trang này chỉ dành cho quản trị viên."
+2. Nút "Về trang chủ" (primary, `/`) và nút phụ "Hồ sơ của tôi" (outline, `/profile`) để có thêm đích hợp lệ.
+   - Trạng thái: default / hover / focus-visible. Không có loading/error/empty.
+
+### Responsive
+Căn giữa, `py-16`, một cột ở mọi cỡ; hai nút xếp dọc full width trên mobile, ngang từ `sm`.
+
+### Navigation
+- Đến màn hình này từ: `/admin*` với user thường; API admin trả 403.
+- Từ màn hình này đến: `/`, `/profile`.
+
+### Ghi chú
+- Không render menu admin hay dữ liệu nào từ API. 403 do hạ quyền giữa phiên: gọi lại `GET /api/user/profile` để cập nhật `role` trong AuthContext (link "Quản trị" biến khỏi `AccountMenu`).
+- Focus: `h1` có `tabIndex={-1}` nhận focus khi trang hiện, để trình đọc màn hình đọc ngay. `document.title` "Không có quyền truy cập — Try-on".

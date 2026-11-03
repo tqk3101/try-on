@@ -7,7 +7,7 @@ import {
 } from '../controllers/userController.js';
 import { requireAuth } from '../middlewares/auth.js';
 import { avatarLimiter } from '../middlewares/rateLimiters.js';
-import { parseAvatarUpload } from '../middlewares/uploadAvatar.js';
+import { parseAvatarUpload } from '../middlewares/imageUpload.js';
 
 const router = Router();
 // Mọi route /api/user/* đều cần đăng nhập.

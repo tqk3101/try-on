@@ -12,6 +12,8 @@ export default function ConfirmDialog({
   confirmLabel,
   cancelLabel = 'Huỷ',
   busy = false,
+  busyLabel = 'Đang xoá…',
+  confirmTone = 'danger',
   onConfirm,
   onCancel,
 }) {
@@ -67,9 +69,13 @@ export default function ConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className="inline-flex min-h-12 items-center justify-center rounded-full bg-accent-dark px-6 text-sm font-semibold text-white transition-colors hover:bg-ink disabled:cursor-not-allowed disabled:opacity-70"
+            className={`inline-flex min-h-12 items-center justify-center rounded-full px-6 text-sm font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
+              confirmTone === 'primary'
+                ? 'bg-accent hover:bg-accent-dark'
+                : 'bg-accent-dark hover:bg-ink'
+            }`}
           >
-            {busy ? 'Đang xoá…' : confirmLabel}
+            {busy ? busyLabel : confirmLabel}
           </button>
         </div>
       </div>

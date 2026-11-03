@@ -6,6 +6,7 @@ import { PATHS } from '../routes/paths.js';
 import { safeRedirect } from '../routes/safeRedirect.js';
 import { ApiError } from '../services/apiClient.js';
 import { validateEmail, validateLoginForm } from '../utils/authValidation.js';
+import useDocumentTitle from '../hooks/useDocumentTitle.js';
 
 const FIELD_ORDER = ['email', 'password'];
 const GENERIC_ERROR = 'Không thể đăng nhập lúc này. Vui lòng thử lại.';
@@ -20,6 +21,7 @@ function omit(object, key) {
 }
 
 export default function LoginPage() {
+  useDocumentTitle('Đăng nhập');
   const navigate = useNavigate();
   const { login } = useAuth();
   const location = useLocation();
@@ -43,10 +45,6 @@ export default function LoginPage() {
   const registerPath = redirect
     ? `${PATHS.register}?redirect=${encodeURIComponent(redirect)}`
     : PATHS.register;
-
-  useEffect(() => {
-    document.title = 'Đăng nhập — Try-on';
-  }, []);
 
   useEffect(() => {
     if (location.state) {
