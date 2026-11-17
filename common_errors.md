@@ -170,6 +170,13 @@ Cập nhật lần cuối: 2026-11-17 (Sprint 3, Task 1).
 /g, '
 ')` khi đọc. KHÔNG "sửa" bằng cách format lại cả repo (tạo diff khổng lồ).
 
+### 6.8 Playwright MCP báo `Browser is already in use for ...ms-playwright-mcpmcp-chrome-...`
+- **Triệu chứng:** mọi lệnh Playwright MCP (kể cả `browser_close`) lỗi; subagent không verify được trình duyệt và bàn giao thiếu.
+- **Nguyên nhân:** một Chrome cũ của chính Playwright MCP vẫn giữ profile (tiến trình cha là `@playwright/mcp/cli.js`); `browser_close` không còn điều khiển được nó.
+- **Cách sửa / phòng tránh:** KHÔNG kill tiến trình khi chưa chắc là của mình (6.2). Chạy kịch bản bằng `playwright-core` trong cache npx (`%LOCALAPPDATA%
+pm-cache_npx*
+ode_modules`) với `chromium.launch({ executablePath: chrome.exe, headless: true })` (profile tạm riêng) và cổng dev riêng (backend 3100, frontend 5174 + `VITE_API_URL`). Đặt script ngoài repo; không in mật khẩu seed. Khi giao verify trình duyệt cho subagent, nói trước phương án dự phòng này.
+
 ---
 
 ## 7. Kiểm thử & dữ liệu test

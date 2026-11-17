@@ -53,6 +53,7 @@ function renderApp(url) {
             </Route>
             <Route element={<RequireAuth />}>
               <Route path="/profile" element={<Profile />} />
+              <Route path="/try-on" element={<Profile />} />
             </Route>
           </Routes>
           <Where />
@@ -125,12 +126,13 @@ describe('AuthProvider + guards', () => {
     expect(showToast).toHaveBeenCalledWith('Bạn đã đăng xuất.');
   });
 
-  it('đăng nhập: lưu token, GuestOnly chuyển tới /profile', async () => {
+  it('đăng nhập: lưu token, GuestOnly chuyển tới /try-on (Q19)', async () => {
     const token = futureToken();
     loginAccount.mockResolvedValue({ token, user: profile });
     renderApp('/login');
     await userEvent.click(screen.getByRole('button', { name: 'Gửi' }));
     expect(await screen.findByText('PROFILE:a@b.co')).toBeInTheDocument();
+    expect(where()).toBe('/try-on');
     expect(tokenStorage.get()).toBe(token);
   });
 });

@@ -58,8 +58,8 @@ flowchart TD
 
 | Guard | Áp dụng | Hành vi |
 |-------|---------|---------|
-| `RequireAuth` | `/profile` (và route cần đăng nhập sau này) | `checking` → spinner toàn trang; `error` → màn lỗi + Thử lại; `guest` → `<Navigate to="/login?redirect=<pathname+search>" replace />`; `authenticated` → render |
-| `GuestOnly` | `/login`, `/register` | `checking` → spinner; `authenticated` → `<Navigate to={safeRedirect(redirect) hoặc /profile} replace />`; còn lại → render. Đăng ký thành công **không** tạo phiên: user vẫn `guest` và được chuyển sang `/login` (router state `registered`), không đi qua nhánh `authenticated` |
+| `RequireAuth` | `/profile`, `/try-on*`, `/admin*` (route cần đăng nhập) | `checking` → spinner toàn trang; `error` → màn lỗi + Thử lại; `guest` → `<Navigate to="/login?redirect=<pathname+search>" replace />`; `authenticated` → render |
+| `GuestOnly` | `/login`, `/register` | `checking` → spinner; `authenticated` → `<Navigate to={safeRedirect(redirect) hoặc /try-on} replace />`; còn lại → render. Đăng ký thành công **không** tạo phiên: user vẫn `guest` và được chuyển sang `/login` (router state `registered`), không đi qua nhánh `authenticated` |
 
 ```mermaid
 flowchart LR
@@ -70,7 +70,7 @@ flowchart LR
     Q -- guest --> LG["/login?redirect=path hiện tại"]
     Q -- authenticated --> OK
     P -- GuestOnly --> W{status}
-    W -- authenticated --> PR["safeRedirect hoặc /profile"]
+    W -- authenticated --> PR["safeRedirect hoặc /try-on"]
     W -- "guest / error" --> OK
     W -- checking --> SP
 ```

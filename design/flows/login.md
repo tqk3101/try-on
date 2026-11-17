@@ -3,7 +3,7 @@
 > US-01 · Task 6 · `POST /api/auth/login` · Quy ước response, mã lỗi: [README.md](README.md)
 
 ## Tóm tắt
-Khách mở `/login` (có thể kèm `?redirect=/profile&reason=expired`, hoặc router state `{ registered: true, email }` khi vừa đăng ký xong), nhập email + mật khẩu. Backend tìm user theo email đã chuẩn hoá, so sánh bcrypt, phát JWT. Frontend lưu token vào `localStorage['tryon_token']`, cập nhật AuthContext, chuyển tới `redirect` hợp lệ hoặc `/profile`.
+Khách mở `/login` (có thể kèm `?redirect=/profile&reason=expired`, hoặc router state `{ registered: true, email }` khi vừa đăng ký xong), nhập email + mật khẩu. Backend tìm user theo email đã chuẩn hoá, so sánh bcrypt, phát JWT. Frontend lưu token vào `localStorage['tryon_token']`, cập nhật AuthContext, chuyển tới `redirect` hợp lệ hoặc `/try-on` (Q19, từ Sprint 3).
 
 ## Validate
 | Trường | Quy tắc | Message |
@@ -47,7 +47,7 @@ sequenceDiagram
                 API->>API: signToken({ sub: id, role }), TTL = JWT_EXPIRES_IN
                 API-->>FE: 200 { token, user } (bỏ password_hash)
                 FE->>FE: tokenStorage.set(token), AuthContext: user, status = authenticated
-                FE->>FE: target = safeRedirect(query.redirect) hoặc /profile
+                FE->>FE: target = safeRedirect(query.redirect) hoặc /try-on
                 FE-->>U: navigate(target, replace)
             end
             opt 401 INVALID_CREDENTIALS
@@ -89,10 +89,10 @@ Lỗi DB/Supabase → 500 `INTERNAL_ERROR`; lỗi mạng → `NETWORK_ERROR`; fo
 ```
 
 ## Chi tiết frontend
-- `/login` là route chỉ-khách; nếu đã đăng nhập thì chuyển ngay tới `safeRedirect(redirect)` hoặc `/profile`.
-- Router state `{ registered: true, email }` (đến từ đăng ký thành công, `register.md`) → banner thành công "Đăng ký thành công. Vui lòng đăng nhập.", điền sẵn ô email bằng `state.email`, focus ô mật khẩu. Ngay sau khi đọc, xoá state bằng `navigate(pathname + search, { replace: true, state: null })` để reload/Back không hiện lại banner. Đăng ký **không** tự đăng nhập, nên đây là lần đăng nhập đầu tiên của tài khoản mới; sau login chuyển `redirect` hợp lệ hoặc `/profile` như bình thường.
+- `/login` là route chỉ-khách; nếu đã đăng nhập thì chuyển ngay tới `safeRedirect(redirect)` hoặc `/try-on`.
+- Router state `{ registered: true, email }` (đến từ đăng ký thành công, `register.md`) → banner thành công "Đăng ký thành công. Vui lòng đăng nhập.", điền sẵn ô email bằng `state.email`, focus ô mật khẩu. Ngay sau khi đọc, xoá state bằng `navigate(pathname + search, { replace: true, state: null })` để reload/Back không hiện lại banner. Đăng ký **không** tự đăng nhập, nên đây là lần đăng nhập đầu tiên của tài khoản mới; sau login chuyển `redirect` hợp lệ hoặc `/try-on` như bình thường.
 - `reason=expired` → banner thông tin "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại." phía trên form.
-- `safeRedirect(value)`: hợp lệ khi là string, bắt đầu bằng `/`, không bắt đầu bằng `//` hoặc `/\`, không phải `/login`, `/register`; ngược lại trả `/profile`.
+- `safeRedirect(value)`: hợp lệ khi là string, bắt đầu bằng `/`, không bắt đầu bằng `//` hoặc `/\`, không phải `/login`, `/register`; ngược lại trả `null` (nơi gọi dùng đích mặc định `/try-on`: `safeRedirect(redirect) ?? /try-on`).
 - Có link "Chưa có tài khoản? Đăng ký" (giữ `redirect` khi chuyển trang).
 - Sau khi đăng nhập ở một tab, tab khác nhận sự kiện `storage` và tải lại user (xem `logout-protected-routes.md`).
 

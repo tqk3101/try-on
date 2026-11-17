@@ -61,7 +61,7 @@ Code: `frontend/src/pages/RegisterPage.jsx`, khung `components/AuthLayout.jsx`, 
 Khách tạo tài khoản bằng email + mật khẩu. Thành công **không** tự đăng nhập: chuyển `/login` kèm thông báo và email điền sẵn (README flows D3).
 
 ### Quyền truy cập
-Chỉ khách (guest-only). Người đã đăng nhập bị `GuestOnly` chuyển sang `/profile` (Task 6, do agent-coder nối cùng AuthProvider).
+Chỉ khách (guest-only). Người đã đăng nhập bị `GuestOnly` chuyển sang `/try-on` (Q19; Task 6, do agent-coder nối cùng AuthProvider).
 
 ### Các thành phần chính
 1. **Khung `AuthLayout`**: nền canvas, header chỉ có logo, thẻ trắng `rounded-3xl shadow-card` rộng tối đa `max-w-md` ở giữa; skip link tới `#main`.
@@ -94,10 +94,10 @@ Một cột ở mọi cỡ: thẻ `w-full max-w-md`, padding `p-6` (mobile) / `p
 Code: `frontend/src/pages/LoginPage.jsx`, khung `AuthLayout`, `TextField`, validate `validateLoginForm` (`utils/authValidation.js`), API `loginAccount` (`services/authApi.js`), phiên qua `useAuth().login`. Flow: `design/flows/login.md`.
 
 ### Mục đích
-Khách đăng nhập bằng email + mật khẩu; thành công chuyển tới `redirect` hợp lệ hoặc `/profile`.
+Khách đăng nhập bằng email + mật khẩu; thành công chuyển tới `redirect` hợp lệ hoặc `/try-on` (Q19).
 
 ### Quyền truy cập
-Chỉ khách (`GuestOnly`): người đã đăng nhập được chuyển tới `safeRedirect(redirect)` hoặc `/profile`.
+Chỉ khách (`GuestOnly`): người đã đăng nhập được chuyển tới `safeRedirect(redirect)` hoặc `/try-on`.
 
 ### Các thành phần chính
 1. **Khung `AuthLayout`** giống `/register` (thẻ `max-w-md`, skip link, header chỉ có logo).
@@ -116,14 +116,14 @@ Chỉ khách (`GuestOnly`): người đã đăng nhập được chuyển tới 
 - `INVALID_CREDENTIALS` (401): khung đỏ nhạt `role="alert"` trên form "Email hoặc mật khẩu không đúng."; **xoá ô mật khẩu, giữ email, focus lại ô mật khẩu**. Không chỉ ra email hay mật khẩu sai.
 - `VALIDATION_ERROR`: map `error.fields` vào từng ô.
 - Lỗi chung (429, 500, mạng): khung đỏ nhạt `role="alert"` với `error.message`; dữ liệu giữ nguyên, nút bật lại.
-- Thành công: `navigate(safeRedirect(redirect) ?? '/profile', { replace: true })`.
+- Thành công: `navigate(safeRedirect(redirect) ?? '/try-on', { replace: true })`.
 
 ### Responsive
 Một cột ở mọi cỡ như `/register`: `w-full max-w-md`, padding `p-6` (mobile) / `p-8` (từ `sm`); vùng chạm >= 44px (ô và nút `min-h-12`).
 
 ### Navigation
 - Đến từ: Landing (nút Đăng nhập), `/register` (sau khi đăng ký thành công), `RequireAuth` (`?redirect=<path>`, thêm `&reason=expired` khi token hết hạn).
-- Đi tới: `/profile` hoặc `redirect`; `/register`.
+- Đi tới: `redirect` hoặc `/try-on` (mặc định); `/register`.
 
 ### Ghi chú
 - Đã nối thật: `LoginPage` gọi `useAuth().login()` (`auth/AuthProvider.jsx`), mock đã xoá. Điều hướng sau đăng nhập do `GuestOnly` làm (một nơi duy nhất). 401 `INVALID_CREDENTIALS` hiện thông báo chung; request đăng nhập/đăng ký không gửi token cũ nên không kích hoạt luồng hết hạn.
@@ -167,7 +167,7 @@ Xem và cập nhật hồ sơ (tên hiển thị, số điện thoại tuỳ ch�
 - Desktop (> 1024px): cột ảnh 18rem, khoảng cách lớn hơn; container `max-w-5xl` của `MainLayout`.
 
 ### Navigation
-- Đến từ: `/login` (sau đăng nhập), `AccountMenu` (Hồ sơ của tôi), `RequireAuth`.
+- Đến từ: `AccountMenu` (Hồ sơ của tôi), `RequireAuth`; `/login` chỉ khi `?redirect=/profile` (đích mặc định sau đăng nhập là `/try-on`, Q19).
 - Đi tới: `/try-on` (link "Vào phòng thử đồ" khi hồ sơ đủ); Đăng xuất và các mục khác qua header (`AccountMenu`). Trang không có nút Đăng xuất riêng. Đến từ thêm: màn "Hoàn thiện hồ sơ để thử đồ" ở phòng thử đồ.
 
 ### Ghi chú
@@ -433,7 +433,7 @@ Căn giữa, `py-16`, một cột ở mọi cỡ; hai nút xếp dọc full widt
 
 Bám `design/flows/try-on-room.md` (mục 4–5, 9), `design/flows/README.md` (contract, mã lỗi, route, D24–D31, Q11–Q22), `sprints/US-05.md`, `sprints/US-06.md`. Route: `/try-on` và `/try-on/:categoryId?product=<productId>` (README mục 5), cả hai nằm trong `RequireAuth` + `MainLayout`; guest bị chuyển `/login?redirect=<path>`. Mọi người dùng đã đăng nhập (kể cả admin) dùng được.
 
-Code: `pages/TryOnCategoriesPage.jsx`, `pages/TryOnRoomPage.jsx`; component `components/tryOn/` (`TryOnStage`, `ProductPanel`, `ProfileGate`, `ConsentDialog`); logic `features/tryOn/` (`useTryOnAccess`, `useCategories`, `useTryOnRoom`, `useSwipe`, điểm nối dữ liệu `tryOnApi.js`); mock `mocks/tryOnMock.js` (xem "Mock và điểm nối API" cuối mục).
+Code: `pages/TryOnCategoriesPage.jsx`, `pages/TryOnRoomPage.jsx`; component `components/tryOn/` (`TryOnStage`, `ProductPanel`, `ProfileGate`, `ConsentDialog`); logic `features/tryOn/` (`useTryOnAccess`, `useCategories`, `useTryOnRoom`, `useSwipe`, điểm nối dữ liệu `tryOnApi.js`, xem "Nối API thật" cuối mục).
 
 **Quy ước chung của phòng thử đồ**
 - **Câu chữ trạng thái chờ chuẩn hoá (duy nhất):** `Đang thử đồ {tên sản phẩm}…` (có dấu "…"). Dùng cho chữ hiển thị trong khung ảnh và cho thông báo `aria-live`. Các câu cũ "Đang tạo ảnh bạn mặc {tên}…" ở `try-on-room.md` mục 9 (sơ đồ) và `US-05.md` luồng chính bước 4 thay bằng câu này.
@@ -560,11 +560,11 @@ Một `<section aria-label="Phòng thử đồ: {danh mục}">` có `onKeyDown` 
 - Cache client `entries` sống trong phiên trang (đổi danh mục = mount lại, `key={categoryId}`); không lưu `localStorage`.
 - Chưa test trên thiết bị cảm ứng thật: vuốt đã kiểm tra bằng Pointer Events tổng hợp ở 375px (xem báo cáo Task 2).
 
-### Mock và điểm nối API (cho agent-coder, Sprint 3 Task 4)
-Mọi dữ liệu đi qua **một file** `frontend/src/features/tryOn/tryOnApi.js` (hiện re-export từ `mocks/tryOnMock.js`; đánh dấu `TODO(Task4)` trong code). Khi nối: tạo `services/tryOnApi.js` (+ hàm danh mục) dùng `apiClient`, đổi import trong `tryOnApi.js`, xoá `mocks/tryOnMock.js`; `grep -r "tryOnMock\|?mock="` phải rỗng (common_errors 3.5).
+### Nối API thật (Sprint 3 Task 4, đã xong)
+Mọi dữ liệu đi qua **một file** `frontend/src/features/tryOn/tryOnApi.js`, re-export từ `services/tryOnApi.js` (`requestTryOn`, `getTryOn`, `getQuota`, `giveConsent`), `services/categoryApi.js` (`fetchCategories`, `fetchCategoryProducts`) và `services/userApi.js` (`fetchProfile`); tất cả dùng `apiClient` dùng chung. Không còn mock (`mocks/tryOnMock.js`, `?mock=` và `sessionStorage` `tryon_mock_scenario` đã xoá).
 
-| Hàm trong `features/tryOn/tryOnApi.js` | Thay bằng | Response (đúng contract, mock đã khớp) | Nơi dùng |
-|-----------------------------------------|-----------|----------------------------------------|----------|
+| Hàm trong `features/tryOn/tryOnApi.js` | API | Response | Nơi dùng |
+|-----------------------------------------|-----|----------|----------|
 | `fetchProfile({ signal })` | `services/userApi.fetchProfile` (đã có) | `{ profile }` — cần thêm `tryOnConsentAt` (backend Task 3) | `useTryOnAccess` |
 | `fetchCategories({ signal })` | `GET /api/categories` | `{ categories: [{ id, name, slug }] }` | `useCategories` |
 | `fetchCategoryProducts(id, { signal })` | `GET /api/categories/:id/products` | `{ category: { id, name, slug }, products: [{ id, name, price, imageUrl }] }`; 404 `CATEGORY_NOT_FOUND` | `useTryOnRoom.loadList` |
@@ -575,13 +575,10 @@ Mọi dữ liệu đi qua **một file** `frontend/src/features/tryOn/tryOnApi.j
 
 `TryOn` = `{ id, productId, status: 'processing'|'succeeded'|'failed', imageUrl, error: { code, message } | null, simulated, createdAt, completedAt }`.
 
-Điểm agent-coder cần xem lại khi nối:
-1. **Poll**: hằng `DEBOUNCE_MS` 400, `POLL_INTERVAL_MS` 2000, `POLL_TIMEOUT_MS` 120000 ở đầu `features/tryOn/useTryOnRoom.js` (đã đúng spec; vòng poll nằm trong effect, có `AbortController`).
-2. **Lỗi mạng khi poll** hiện bị nuốt (poll tiếp tới hết 120 s); chỉ 404 -> `failed`. Xem lại nếu muốn hiện lỗi sớm hơn.
-3. **429 `TRY_ON_QUOTA_EXCEEDED`**: `apiClient` không lộ header `Retry-After`; UI dùng chữ cố định "00:00 ngày mai (giờ Việt Nam)" và gọi lại `getQuota()` để cập nhật badge. Nếu muốn hiện giờ chính xác, cần `ApiError` mang `retryAfter`.
-4. **Hồ sơ**: `useTryOnAccess` gọi `fetchProfile` mỗi lần mở `/try-on` hoặc `/try-on/:id` (không dùng AuthContext vì chỉ giữ định danh). Có thể gộp với `useProfile` sau.
-5. **Đích sau đăng nhập** `/try-on` (Q19): đổi `GuestOnly` + `safeRedirect` fallback `PATHS.profile` -> `PATHS.tryOn` và cập nhật `login.md`, `logout-protected-routes.md`, mục "Đăng nhập" / "Hồ sơ" trong file này (Task 4, chưa làm ở Task 2).
-6. **`IMAGE_LOAD_FAILED`** là mã chỉ có ở client (ảnh kết quả vẫn không tải được sau khi GET lại một lần); Thử lại sẽ POST lại và nhận cache hit 200 với URL ký mới.
-7. Giá trị `?mock=` và `sessionStorage` `tryon_mock_scenario` chỉ thuộc mock, biến mất cùng file mock.
-
-Kịch bản mock (`?mock=<tên>`, nhớ trong `sessionStorage` tới khi `?mock=ok`): `ok`, `gemini` (không nhãn mô phỏng), `slow` (12 s), `hang`, `fail`, `fail-once`, `timeout`, `rejected`, `provider`, `unavailable`, `network`, `quota` (2 lượt cuối), `expired-url`, `profile-incomplete`, `no-consent`, `consent-error`, `consent-409`, `profile-409`, `categories-error`, `products-error`, `empty-categories`, `single`; danh mục rỗng: `/try-on/00000000-0000-4000-8000-000000000212`. Mô tả đầy đủ ở comment đầu `mocks/tryOnMock.js`.
+Hành vi của `features/tryOn/useTryOnRoom.js`:
+1. **Debounce 400 ms**: chỉ `POST /api/try-on` cho sản phẩm user dừng lại; không prefetch sản phẩm khác (Q15).
+2. **Poll** `GET /api/try-on/:id` mỗi 2 s, tối đa 120 s tính từ lúc bắt đầu yêu cầu sản phẩm đó; chỉ poll sản phẩm đang hiển thị (rời sản phẩm -> dừng poll, job vẫn chạy ở server; quay lại -> GET ngay rồi poll tiếp); `AbortController` khi rời trang. Lỗi mạng/5xx tạm thời -> poll tiếp tới hết 120 s; 404 -> `failed`.
+3. **Theo `error.code`** của POST: 409 `PROFILE_INCOMPLETE` -> màn Hoàn thiện hồ sơ; 409 `TRY_ON_CONSENT_REQUIRED` -> hộp thoại đồng ý (đồng ý xong phòng thử đồ mount lại và POST lại); 429 `TRY_ON_QUOTA_EXCEEDED` -> khối hết lượt + `getQuota()` (UI dùng chữ cố định "00:00 ngày mai (giờ Việt Nam)", không đọc `Retry-After`); 404 `PRODUCT_NOT_FOUND` -> tải lại danh sách; mã khác (503 `TRY_ON_UNAVAILABLE`, 429 `TOO_MANY_REQUESTS`, mạng, `failed`) -> khối lỗi + Thử lại (POST lại).
+4. **`<img onError>`** -> `GET` lại một lần để lấy `imageUrl` ký mới; vẫn lỗi -> `IMAGE_LOAD_FAILED` (mã chỉ có ở client) + Thử lại (POST lại -> cache hit 200).
+5. **Hồ sơ**: `useTryOnAccess` gọi `fetchProfile` mỗi lần mở `/try-on` hoặc `/try-on/:id` (đọc `tryOnConsentAt`); sau `giveConsent` dùng `profile` trả về, không hỏi lại.
+6. **Đích sau đăng nhập** = `/try-on` (Q19): `GuestOnly` dùng `safeRedirect(redirect) ?? PATHS.tryOn`.

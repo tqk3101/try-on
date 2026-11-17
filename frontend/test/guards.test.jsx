@@ -39,6 +39,7 @@ function renderAt(url, auth) {
           </Route>
           <Route element={<RequireAuth />}>
             <Route path="/profile" element={<p>PROFILE</p>} />
+            <Route path="/try-on" element={<p>TRYON</p>} />
             <Route element={<RequireAdmin />}>
               <Route path="/admin/products" element={<p>ADMIN-PRODUCTS</p>} />
             </Route>
@@ -113,20 +114,20 @@ describe('GuestOnly', () => {
     expect(screen.getByText('ADMIN-PRODUCTS')).toBeInTheDocument();
   });
 
-  it('đã đăng nhập, không có redirect -> /profile', () => {
+  it('đã đăng nhập, không có redirect -> /try-on (Q19)', () => {
     renderAt('/register', { status: 'authenticated', user });
-    expect(screen.getByText('PROFILE')).toBeInTheDocument();
+    expect(screen.getByText('TRYON')).toBeInTheDocument();
   });
 
-  it('redirect độc hại bị bỏ qua -> /profile', () => {
+  it('redirect độc hại bị bỏ qua -> /try-on', () => {
     renderAt('/login?redirect=https%3A%2F%2Fevil.example', { status: 'authenticated', user });
-    expect(screen.getByText('PROFILE')).toBeInTheDocument();
-    expect(where()).toBe('/profile');
+    expect(screen.getByText('TRYON')).toBeInTheDocument();
+    expect(where()).toBe('/try-on');
   });
 
-  it('redirect trỏ lại /login -> /profile (không lặp)', () => {
+  it('redirect trỏ lại /login -> /try-on (không lặp)', () => {
     renderAt('/login?redirect=%2Flogin', { status: 'authenticated', user });
-    expect(screen.getByText('PROFILE')).toBeInTheDocument();
+    expect(screen.getByText('TRYON')).toBeInTheDocument();
   });
 });
 
