@@ -3,15 +3,19 @@
 Người mua chọn danh mục và thấy ảnh chính mình mặc sản phẩm (sinh bằng GenAI, có cache), chuyển sản phẩm bằng mũi tên/vuốt; dev/test chạy được không tốn chi phí nhờ provider giả lập; có test tự động cho các luồng đã verify tay ở Sprint 1–2.
 User Stories: US-05 (chọn danh mục → ảnh mình mặc sản phẩm đầu tiên), US-06 (mũi tên / vuốt → sản phẩm tiếp theo)
 
-**Trạng thái:** PLANNED (lập kế hoạch 2026-11-17). Task 1 đã có bản thiết kế (flow, schema, migration `008`/`009` **đã áp qua MCP 2026-11-17**). **Q12 đã chốt 2026-11-17: provider thật = Gemini, `stub` mặc định.** **Q13–Q22 đã chốt 2026-11-17 theo mặc định khuyến nghị** (`design/flows/README.md` mục 7); Q13 bắt buộc cả ảnh toàn thân + chiều cao + cân nặng, Q14 có hộp thoại đồng ý một lần, Q18 30 lượt/user/ngày.
+**Trạng thái:** PLANNED (lập kế hoạch 2026-11-17). Task 1 đã có bản thiết kế (flow, schema, migration `008`/`009` **đã áp qua MCP 2026-11-17**). **Q12 đã chốt 2026-11-17: provider thật = Gemini, `stub` mặc định.** **Q13–Q22 đã chốt 2026-11-17** (người dùng trả lời từng câu, `design/flows/README.md` mục 7): theo mặc định khuyến nghị, **trừ Q15 = không sinh trước (no prefetch)**. Q13 bắt buộc cả ảnh toàn thân + chiều cao + cân nặng, Q14 có hộp thoại đồng ý một lần, Q18 30 lượt/user/ngày.
 
-**Quyết định phạm vi (2026-11-17; Q12–Q22 đã chốt 2026-11-17 theo mặc định khuyến nghị; nếu cần đổi thì cập nhật backlog trước):**
+**Quyết định phạm vi (2026-11-17; Q12–Q22 đã chốt 2026-11-17; nếu cần đổi thì cập nhật backlog trước):**
 - Sinh ảnh **bất đồng bộ**: `POST /api/try-on` → 202 + poll `GET /api/try-on/:id`; job chạy trong tiến trình Express (1 instance), không thêm hàng đợi ngoài (D26)
 - Cache `try_on_results` theo (user, sản phẩm, `input_key`), không TTL; dọn kết quả khi thay/xoá ảnh toàn thân hoặc thay ảnh/xoá sản phẩm (D27, D29)
 - Provider qua adapter `TRY_ON_PROVIDER` = `stub` | `gemini`, **mặc định `stub`**. **Đã chốt (Q12, D28, 2026-11-17): provider thật = Gemini** qua adapter `gemini` tái sử dụng `backend/src/services/geminiImageService.js` (`editImage`, SDK `@google/genai`), model `GEMINI_IMAGE_MODEL` (mặc định `gemini-3.1-flash-image`), key `GEMINI_API_KEY`; prompt cố định ở backend có `promptVersion` (nằm trong `input_key`). Đo chất lượng/giá/chính sách dữ liệu ở Task 6. Phương án đã loại: FASHN `tryon-v1.6`, Vertex AI `virtual-try-on-001`
 - Điều kiện: ảnh toàn thân + chiều cao + cân nặng (Q13) + đồng ý xử lý ảnh một lần (Q14, cột `profiles.try_on_consent_at`)
-- Hạn mức 30 lượt/user/ngày (giờ VN), cache hit và lỗi không tính (Q18, D30); prefetch 1 sản phẩm kế tiếp (Q15); không quay vòng cuối danh sách (Q17)
-- Tra danh mục theo `id` (Q11); không thêm cột loại trang phục (Q16); không có nút "Thêm vào giỏ" (Q20, US-07 ở Sprint 4)
+- Hạn mức 30 lượt/user/ngày (giờ VN), cache hit và lỗi không tính (Q18, D30)
+- **Không sinh trước (Q15, đã chốt: không prefetch)**: chỉ gửi `POST /api/try-on` cho sản phẩm user dừng lại xem (debounce 400 ms); mỗi sản phẩm mới chưa có cache chờ ~8–12 s (Gemini) với trạng thái "đang tạo" rõ ràng, không chặn điều hướng. Lý do: tiết kiệm lượt và chi phí provider
+- Cuối danh sách dừng, không quay vòng; lùi lại sản phẩm trước được (Q17)
+- Lối vào: link "Phòng thử đồ" ở header/`AccountMenu`, CTA landing, link ở `/profile`; **đích mặc định sau đăng nhập = `/try-on`** (Q19)
+- Tra danh mục theo `id` (Q11); một prompt chung, không thêm cột loại trang phục (Q16); không có nút "Thêm vào giỏ" (Q20, US-07 ở Sprint 4)
+- Giữ ảnh kết quả tới khi đầu vào đổi, không TTL, **không có nút xoá toàn bộ ảnh thử đồ** (Q22); test tự động Vitest + supertest, mock Supabase và Gemini (Q21)
 - Mang từ Sprint 2: test runner + test tự động (Task 5)
 
 **Đọc trước khi làm (CLAUDE.md, từ Sprint 2):**
@@ -30,7 +34,7 @@ User Stories: US-05 (chọn danh mục → ảnh mình mặc sản phẩm đầu
 - [x] `sprints/US-05.md`, `sprints/US-06.md`
 - [x] `design/database/schema.md` mục 13–14; `migrations/008_create_try_on_results.sql`, `009_create_try_on_results_bucket.sql` (RLS bật, REVOKE anon/authenticated, GRANT `service_role`); `migrations/README.md`
 - [x] Q12 đã chốt (2026-11-17): Gemini là provider thật (adapter `gemini`), `stub` mặc định; đã cập nhật `try-on-room.md` mục 2, README D27/D28/Q12/Q16, `schema.md`, comment `008`, `migrations/README.md`
-- [x] Người dùng chốt Q13–Q22 (2026-11-17, dùng mặc định); đã bỏ chữ "đề xuất" ở D26, D27, D29–D31
+- [x] Người dùng chốt Q13–Q22 (2026-11-17: mặc định, trừ Q15 = không prefetch); đã bỏ chữ "đề xuất" ở D26, D27, D29–D31; đã bỏ prefetch khỏi `try-on-room.md`, README, US-06, sprint backlog
 - [x] Áp `008` → `009` qua Supabase MCP (đã áp và verify 2026-11-17) và verify (`list_migrations`, `role_table_grants`, RLS, 2 unique index một phần, cột `profiles.try_on_consent_at`, bucket `try-on-results` private 10MB jpeg/png/webp); cập nhật trạng thái ở `CLAUDE.md`, `migrations/README.md`, `schema.md`
 
 **Acceptance Criteria:**
@@ -44,12 +48,12 @@ User Stories: US-05 (chọn danh mục → ảnh mình mặc sản phẩm đầu
 **Mô tả:** Mô tả màn hình và code UI (mock data, happy case + đủ trạng thái) cho `/try-on` và `/try-on/:categoryId`. Làm song song Task 3 sau khi Task 1 chốt contract.
 
 **Công việc:**
-- [ ] Cập nhật `design/screens.md` (mục mới "Phòng thử đồ"): chọn danh mục; phòng thử đồ (ảnh 3:4, tên, giá, "n/N", flat lay thu nhỏ, mũi tên, nhãn "Ảnh mô phỏng"); màn "Hoàn thiện hồ sơ"; hộp thoại đồng ý xử lý ảnh; trạng thái đang tạo (có chữ + bộ đếm giây), lỗi theo `error.code` + Thử lại, hết lượt, danh mục rỗng, cuối danh sách; responsive 375/768/1280; a11y (`aria-live`, phím ←/→, vùng chạm 44 px)
+- [ ] Cập nhật `design/screens.md` (mục mới "Phòng thử đồ"): chọn danh mục; phòng thử đồ (ảnh 3:4, tên, giá, "n/N", flat lay thu nhỏ, mũi tên, nhãn "Ảnh mô phỏng"); màn "Hoàn thiện hồ sơ"; hộp thoại đồng ý xử lý ảnh; trạng thái đang tạo (skeleton/ảnh toàn thân mờ + "Đang thử đồ {tên}…" + bộ đếm giây; hiện ngay khi chuyển sang sản phẩm chưa có ảnh vì không prefetch – Q15; mũi tên/vuốt/phím vẫn hoạt động, không chặn), lỗi theo `error.code` + Thử lại, hết lượt, danh mục rỗng, cuối danh sách; responsive 375/768/1280; a11y (`aria-live`, phím ←/→, vùng chạm 44 px)
 - [ ] Cập nhật `design/design-system.md` nếu thêm component dùng chung (ví dụ khung ảnh 3:4 có lớp trạng thái, nút mũi tên nổi)
 - [ ] Code UI với mock (`src/mocks/tryOnMock.js`): trang, component, vuốt bằng Pointer Events (`touch-action: pan-y`), phím ←/→, giữ vị trí `?product=` (replace), route trong `router.jsx` + `PATHS`, link "Phòng thử đồ" ở header/`AccountMenu`, CTA landing cho user đã đăng nhập, link "Vào phòng thử đồ" ở `/profile` khi hồ sơ đủ
 - [ ] Ghi danh sách điểm TODO nối API cụ thể cho agent-coder (common_errors 3.5)
 
-**Acceptance Criteria:** `screens.md` khớp `try-on-room.md` mục 9 và US-05/06; UI chạy được với mock ở mọi trạng thái; lint + build sạch; router import trang mới (common_errors 5.2); 375px không cuộn ngang.
+**Acceptance Criteria:** `screens.md` khớp `try-on-room.md` mục 9 và US-05/06; UI chạy được với mock ở mọi trạng thái; chuyển sang sản phẩm chưa có ảnh → tên/giá/flat lay đổi ngay (< 100 ms) và khung ảnh hiện trạng thái đang tạo, nút mũi tên vẫn bấm được trong lúc chờ; không render nút "Thêm vào giỏ" (Q20) và không có nút xoá toàn bộ ảnh thử đồ (Q22); lint + build sạch; router import trang mới (common_errors 5.2); 375px không cuộn ngang.
 
 ---
 
@@ -79,16 +83,16 @@ User Stories: US-05 (chọn danh mục → ảnh mình mặc sản phẩm đầu
 ---
 
 ### 4. Nối frontend – API phòng thử đồ (Priority: High) — agent-coder
-**Mô tả:** Thay mock của Task 2 bằng API thật; polling, prefetch, debounce, xử lý lỗi theo `error.code`.
+**Mô tả:** Thay mock của Task 2 bằng API thật; polling, debounce, xử lý lỗi theo `error.code`. Không prefetch (Q15).
 
 **Công việc:**
-- [ ] `services/tryOnApi.js` (`requestTryOn`, `getTryOn`, `getQuota`, `giveConsent`); `features/tryOn/` (hook quản lý `Map<productId, TryOn>`, poll 2 s tối đa 120 s, tối đa 2 poll đồng thời, `AbortController` khi rời trang)
-- [ ] Prefetch 1 sản phẩm kế tiếp sau `succeeded` khi `quota.remaining > 0`; debounce 400 ms khi lướt
+- [ ] `services/tryOnApi.js` (`requestTryOn`, `getTryOn`, `getQuota`, `giveConsent`); `features/tryOn/` (hook quản lý `Map<productId, TryOn>`, poll 2 s tối đa 120 s, chỉ poll sản phẩm đang hiển thị – rời sản phẩm thì dừng poll của nó, job vẫn chạy ở server, quay lại thì GET ngay; `AbortController` khi rời trang)
+- [ ] Debounce 400 ms: chỉ gửi POST cho sản phẩm user dừng lại ≥ 400 ms; **không prefetch** sản phẩm kế tiếp (Q15)
 - [ ] `<img onError>` → GET lại một lần; 409 `PROFILE_INCOMPLETE` / `TRY_ON_CONSENT_REQUIRED`, 429, 503, `failed` hiển thị đúng màn/khối
-- [ ] Đọc `tryOnConsentAt` từ profile; đích mặc định sau đăng nhập theo Q19 (nếu chốt đổi: cập nhật `GuestOnly`/`safeRedirect` và `README.md` mục 5 route)
+- [ ] Đọc `tryOnConsentAt` từ profile; đích mặc định sau đăng nhập = `/try-on` (Q19 đã chốt): đổi fallback trong `GuestOnly`/`safeRedirect` từ `/profile` sang `/try-on` (vẫn ưu tiên `?redirect=` hợp lệ) và cập nhật tài liệu cùng lúc: `design/flows/login.md`, `logout-protected-routes.md`, `design/screens.md` (mục đăng nhập, `/profile` "Đến từ")
 - [ ] `grep` không còn mock (`tryOnMock`)
 
-**Acceptance Criteria:** đạt Acceptance Criteria của US-05 và US-06 trên trình duyệt thật + DB/Storage thật với provider `stub` (desktop + mobile 375px); kịch bản trong `try-on-room.md` mục 11 chạy qua; dữ liệu test đã dọn (`try_on_results` = 0, `storage.objects` bucket `try-on-results` = 0, `avatars`/`products` về trạng thái trước test).
+**Acceptance Criteria:** đạt Acceptance Criteria của US-05 và US-06 trên trình duyệt thật + DB/Storage thật với provider `stub` (desktop + mobile 375px); bấm mũi tên sang sản phẩm chưa có ảnh → POST gửi sau debounce, hiện trạng thái đang tạo rồi ảnh, cache hit hiện ngay; không có POST nào cho sản phẩm user chưa mở (kiểm tra tab Network); đăng nhập không có `?redirect=` → về `/try-on`; kịch bản trong `try-on-room.md` mục 11 chạy qua; dữ liệu test đã dọn (`try_on_results` = 0, `storage.objects` bucket `try-on-results` = 0, `avatars`/`products` về trạng thái trước test).
 
 ---
 
@@ -96,7 +100,7 @@ User Stories: US-05 (chọn danh mục → ảnh mình mặc sản phẩm đầu
 **Mô tả:** Thêm hạ tầng test và test cho các luồng đã verify tay ở Sprint 1–2 và luồng mới Sprint 3. Có thể làm song song Task 2–3 (nên xong trước Task 4 để test luồng mới).
 
 **Công việc:**
-- [ ] Backend: Vitest (bản mới nhất, tra Context7) + `supertest`; script `npm test`; mock lớp `config/supabase.js` (không chạm DB thật trong test tự động)
+- [ ] Backend: Vitest (bản mới nhất, tra Context7) + `supertest`; script `npm test`; mock lớp `config/supabase.js` và Gemini (`geminiImageService`) (Q21: không chạm DB thật, không gọi API Gemini thật trong test tự động)
 - [ ] Backend test: validators (auth, profile, category, product), `utils/image.js` (magic bytes, kích thước PNG/JPEG), `requireAuth`/`requireAdmin` (401/403), envelope lỗi, limiter, multer map lỗi (413/415/400), try-on (khoá cache, hạn mức, chuyển trạng thái, stub success/fail/slow, 404 user khác)
 - [ ] Frontend: Vitest + jsdom + Testing Library; script `npm test`; test `safeRedirect`, `avatarCheck`, `format`, `authValidation`, guards (`RequireAuth`, `GuestOnly`, `RequireAdmin`), hook polling try-on (fake timers)
 - [ ] Cập nhật mục **Commands** trong `CLAUDE.md` và README

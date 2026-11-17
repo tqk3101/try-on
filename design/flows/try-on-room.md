@@ -2,7 +2,7 @@
 
 > US-05, US-06 · Sprint 3 Task 1 (thiết kế), Task 3 (backend), Task 4 (nối frontend), Task 6 (nhà cung cấp thật) · Bảng/bucket: `design/database/schema.md` mục 13–14 · API danh mục/sản phẩm đã có: [category-management.md](category-management.md) mục 3, [product-management.md](product-management.md) mục 8 · Quy ước: [README.md](README.md) · Story: `sprints/US-05.md`, `sprints/US-06.md`
 >
-> Trạng thái: **bản thiết kế 2026-11-17. Q12 đã chốt (2026-11-17): provider thật = Gemini, `stub` mặc định (mục 2). Q13–Q22 đã chốt (2026-11-17) theo mặc định khuyến nghị** (README mục 7).
+> Trạng thái: **bản thiết kế 2026-11-17. Q12 đã chốt (2026-11-17): provider thật = Gemini, `stub` mặc định (mục 2). Q13–Q22 đã chốt (2026-11-17) theo mặc định khuyến nghị, trừ Q15 = không sinh trước (không prefetch)** (README mục 7).
 
 ## Mục lục
 1. [Tóm tắt](#1-tóm-tắt)
@@ -19,7 +19,7 @@
 
 ## 1. Tóm tắt
 
-Người mua đã đăng nhập, hồ sơ đủ (ảnh toàn thân + chiều cao + cân nặng) và đã đồng ý xử lý ảnh, mở `/try-on` → chọn danh mục → `/try-on/:categoryId`. Client lấy danh sách sản phẩm (`GET /api/categories/:id/products`, cũ nhất trước – D24), rồi yêu cầu ảnh thử đồ cho sản phẩm đầu tiên (`POST /api/try-on`). Có sẵn kết quả trong cache → trả ngay (200). Chưa có → server tạo job, trả 202, client poll `GET /api/try-on/:id` tới khi `succeeded`/`failed`. Bấm mũi tên / vuốt → sản phẩm kế tiếp, lặp lại; client prefetch **1** sản phẩm kế tiếp sau khi ảnh hiện tại xong.
+Người mua đã đăng nhập, hồ sơ đủ (ảnh toàn thân + chiều cao + cân nặng) và đã đồng ý xử lý ảnh, mở `/try-on` → chọn danh mục → `/try-on/:categoryId`. Client lấy danh sách sản phẩm (`GET /api/categories/:id/products`, cũ nhất trước – D24), rồi yêu cầu ảnh thử đồ cho sản phẩm đầu tiên (`POST /api/try-on`). Có sẵn kết quả trong cache → trả ngay (200). Chưa có → server tạo job, trả 202, client poll `GET /api/try-on/:id` tới khi `succeeded`/`failed`. Bấm mũi tên / vuốt → sản phẩm kế tiếp, lặp lại cho sản phẩm user dừng lại xem (debounce 400 ms); **không sinh trước** sản phẩm chưa xem (Q15, đã chốt: không prefetch).
 
 Thành phần chính:
 - **Provider adapter** (`backend/src/services/tryOn/providers/*`): một interface, hai cài đặt `stub` (mặc định) và `gemini` (provider thật, Q12 đã chốt), chọn bằng env `TRY_ON_PROVIDER`. Mặc định `stub` → dev/test không tốn tiền, không gửi ảnh ra ngoài.
@@ -108,17 +108,17 @@ Log chỉ ghi `id`, `code`, `status` HTTP, `finishReason`, thời gian, tên mod
 
 | Phương án | Ưu | Nhược | Quyết định |
 |-----------|----|-------|-----------|
-| Đồng bộ (POST chờ tới khi có ảnh) | Đơn giản | Request treo 5–20 s; proxy/trình duyệt có thể cắt; người dùng chuyển sản phẩm thì request cũ vẫn tốn tiền; không prefetch gọn | Không |
-| **Bất đồng bộ: POST tạo job (202) + client poll GET** | Request ngắn; chuyển sản phẩm không huỷ job (kết quả vẫn vào cache, quay lại là có); prefetch tự nhiên; job sống sót khi tab đóng | Thêm bảng trạng thái, xử lý job "treo" khi server restart | **Chọn** |
+| Đồng bộ (POST chờ tới khi có ảnh) | Đơn giản | Request treo 5–20 s; proxy/trình duyệt có thể cắt; người dùng chuyển sản phẩm thì request cũ vẫn tốn tiền | Không |
+| **Bất đồng bộ: POST tạo job (202) + client poll GET** | Request ngắn; chuyển sản phẩm không huỷ job (kết quả vẫn vào cache, quay lại là có); job sống sót khi tab đóng | Thêm bảng trạng thái, xử lý job "treo" khi server restart | **Chọn** |
 | SSE/WebSocket | Đẩy kết quả tức thì | Thêm hạ tầng, khó với JWT trong header (EventSource không gửi header) | Không ở Sprint 3 |
 | Hàng đợi ngoài (Redis/BullMQ, Supabase Queues) | Bền, chạy nhiều instance | Thêm hạ tầng; dự án 1 instance | Ghi nhận cho sau |
 
 **Job chạy trong tiến trình Express** (fire-and-forget sau khi trả 202), giới hạn đồng thời `TRY_ON_MAX_CONCURRENCY` (semaphore trong bộ nhớ, job vượt ngưỡng chờ trong hàng đợi bộ nhớ, trạng thái DB vẫn `pending`). Server restart làm mất job đang chạy → xử lý bằng **ngưỡng treo**: row `pending`/`processing` có `updated_at` cũ hơn `TRY_ON_TIMEOUT_MS + 30 s` bị coi là `failed` (`GENERATION_TIMEOUT`) khi được đọc lại (GET) hoặc khi POST cùng khoá.
 
 **Cache**
-- Một kết quả `succeeded` cho mỗi (`profile_id`, `product_id`, `input_key`) – unique index một phần. Một job đang chạy cho mỗi khoá – unique index một phần khác → 2 request đồng thời (hai tab, prefetch trùng) không sinh 2 lần: insert thứ hai gặp `23505` → đọc lại row đang chạy và trả về.
+- Một kết quả `succeeded` cho mỗi (`profile_id`, `product_id`, `input_key`) – unique index một phần. Một job đang chạy cho mỗi khoá – unique index một phần khác → 2 request đồng thời (hai tab, bấm Thử lại trùng) không sinh 2 lần: insert thứ hai gặp `23505` → đọc lại row đang chạy và trả về.
 - Không TTL: kết quả còn hợp lệ tới khi đầu vào đổi (mục 8). Signed URL ảnh kết quả TTL 3600 giây, ký lại mỗi lần đọc.
-- **Prefetch:** sau khi ảnh sản phẩm hiện tại `succeeded`, client gọi POST cho **sản phẩm kế tiếp (1 cái)**. Không prefetch xa hơn và không prefetch sản phẩm trước (tốn hạn mức). Có thể đổi bằng hằng số client (Q15).
+- **Không sinh trước (Q15, đã chốt 2026-11-17: không prefetch):** client chỉ gọi POST cho sản phẩm user đang dừng lại xem (sau debounce 400 ms, mục 9). Lý do: mỗi job là 1 lượt hạn mức (30/ngày) và 1 lần gọi Gemini tính tiền; sinh trước sản phẩm user không xem là phí lượt và tiền. Đánh đổi: sản phẩm mới chưa có cache phải chờ thời gian sinh (~8–12 s với Gemini) → UI bắt buộc hiện trạng thái đang tạo rõ ràng và không chặn điều hướng (mục 9). Số job ≈ số sản phẩm user thực sự xem (trừ cache hit).
 
 ## 4. Đối tượng response và API
 
@@ -159,7 +159,7 @@ Kiểm tra ở cả client (dẫn người dùng đi đúng chỗ) và server (n
 | Điều kiện | Thiếu → server | Thiếu → client |
 |-----------|----------------|----------------|
 | Có ảnh toàn thân (`avatar_path`) | 409 `PROFILE_INCOMPLETE`, `fields.avatar` "Bạn cần tải ảnh toàn thân." | Màn "Hoàn thiện hồ sơ để thử đồ" liệt kê mục thiếu + nút "Cập nhật hồ sơ" → `/profile`; khi hồ sơ đã đủ, `/profile` hiện link "Vào phòng thử đồ" thay cho banner "Hoàn thiện hồ sơ" (không thêm query `redirect` cho `/profile`) |
-| Có `height_cm` và `weight_kg` | 409 `PROFILE_INCOMPLETE`, `fields.heightCm` / `fields.weightKg` | Như trên (Q13: có bắt buộc số đo không) |
+| Có `height_cm` và `weight_kg` | 409 `PROFILE_INCOMPLETE`, `fields.heightCm` / `fields.weightKg` | Như trên (Q13 đã chốt: bắt buộc số đo) |
 | Đã đồng ý xử lý ảnh (`try_on_consent_at`) | 409 `TRY_ON_CONSENT_REQUIRED` | Hộp thoại đồng ý lần đầu (Q14) |
 | Danh mục có sản phẩm | – (`GET /api/categories/:id/products` trả `[]`) | Trạng thái rỗng + link chọn danh mục khác |
 
@@ -320,7 +320,10 @@ flowchart TD
     S0 --> T0{"Cache client có tryOn của SP này?"}
     T0 -- "succeeded" --> SHOW
     T0 -- "processing" --> POLL
-    T0 -- "Chưa có / failed và user bấm Thử lại" --> T1[POST /api/try-on productId]
+    T0 -- "Chưa có" --> DB["Hiện ngay tên, giá, flat lay + khung ảnh trạng thái đang tạo; chờ debounce 400 ms"]
+    DB -- "User đã chuyển đi trước 400 ms" --> NAV
+    DB -- "Vẫn ở SP này" --> T1
+    T0 -- "failed và user bấm Thử lại" --> T1[POST /api/try-on productId]
     T1 --> T2{Kết quả}
     T2 -- "200 succeeded" --> SHOW["Hiện ảnh thử đồ 3:4, tên, giá, n/N; nhãn Ảnh mô phỏng nếu simulated"]
     T2 -- "200/202 processing" --> POLL["Trạng thái đang tạo: ảnh toàn thân mờ + thumbnail flat lay + Đang tạo ảnh bạn mặc {tên}… + bộ đếm giây; poll GET /api/try-on/:id mỗi 2 s"]
@@ -335,20 +338,24 @@ flowchart TD
     P1 -- "failed" --> FE2["Khối lỗi theo error.message + Thử lại (POST lại) + vẫn hiện flat lay"]
     P1 -- "Quá 120 s phía client" --> FE2
 
-    SHOW --> PF["Prefetch: POST cho sản phẩm index+1 (nếu có), không chờ"]
     SHOW --> NAV{"Mũi tên phải / vuốt trái / phím →"}
     POLL --> NAV
     FE2 --> NAV
+    POLL --> PV
+    FE2 --> PV
     NAV -- "index < N-1" --> NX["index + 1, URL ?product= (replace)"] --> T0
     NAV -- "index = N-1" --> END["Mũi tên phải disabled; thẻ Đã xem hết danh mục + chọn danh mục khác (không quay vòng, Q17)"]
     SHOW --> PV{"Mũi tên trái / vuốt phải / phím ←"}
+    END --> PV
     PV -- "index > 0" --> PR["index - 1"] --> T0
+    PV -- "index = 0" --> FIRST["Mũi tên trái disabled"]
 ```
 
 **Quy tắc UX (agent-uiux chi tiết trong `screens.md`)**
-- Chuyển sản phẩm **không bị chặn** khi ảnh đang tạo: job tiếp tục ở server, quay lại thấy kết quả. Client chỉ poll sản phẩm đang hiển thị và sản phẩm prefetch (tối đa 2 vòng poll cùng lúc); rời trang thì dừng poll (`AbortController`).
+- **Không prefetch (Q15):** mỗi sản phẩm mới chưa có cache chờ thời gian sinh (~8–12 s Gemini, ~2 s `stub`). Trạng thái đang tạo phải hiện **ngay** khi chuyển sản phẩm (không để khung trống): ảnh toàn thân mờ/skeleton + thumbnail flat lay + "Đang thử đồ {tên}…" + bộ đếm giây; tên/giá/flat lay đổi tức thì.
+- Chuyển sản phẩm **không bị chặn** khi ảnh đang tạo (mũi tên/vuốt/phím luôn hoạt động): job tiếp tục ở server, quay lại thấy kết quả. Client chỉ poll sản phẩm đang hiển thị (1 vòng poll); rời sản phẩm thì dừng poll của nó, quay lại thì GET ngay rồi poll tiếp; rời trang thì dừng poll (`AbortController`).
 - Cache client: `Map<productId, TryOn>` trong state của trang, sống trong phiên trang.
-- **Debounce 400 ms:** chỉ gửi POST cho sản phẩm user dừng lại ≥ 400 ms (và sản phẩm prefetch), để lướt nhanh không tạo job cho sản phẩm chỉ lướt qua. Prefetch chỉ khi `quota.remaining > 0`.
+- **Debounce 400 ms:** chỉ gửi POST cho sản phẩm user dừng lại ≥ 400 ms, để lướt nhanh không tạo job (không tốn lượt) cho sản phẩm chỉ lướt qua.
 - `?product=` không thuộc danh mục → về sản phẩm đầu (replace URL), không báo lỗi. Kết quả poll về muộn chỉ cập nhật đúng `productId` của nó.
 - Vuốt: Pointer Events (ngưỡng ngang ≥ 50 px và lớn hơn độ lệch dọc; không cần thư viện), `touch-action: pan-y` trên khung ảnh để không chặn cuộn dọc. Bàn phím ←/→ khi focus trong vùng phòng thử đồ. Mũi tên có `aria-label` "Sản phẩm trước"/"Sản phẩm tiếp theo"; khu vực trạng thái `aria-live="polite"` đọc "Sản phẩm 2 trên 12: {tên}, {giá}" và "Đã tạo xong ảnh".
 - Ảnh kết quả `<img onError>` (URL hết hạn) → GET lại `/api/try-on/:id` **một lần**, vẫn lỗi → khối lỗi + Thử lại.
