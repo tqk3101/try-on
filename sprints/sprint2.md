@@ -3,7 +3,11 @@
 Admin quản lý được danh mục và sản phẩm (kèm ảnh flat lay) để Sprint 3 (phòng thử đồ) có dữ liệu quần áo.
 User Stories: US-03 (quản lý danh mục), US-04 (thêm / sửa / xoá sản phẩm)
 
-**Trạng thái:** IN PROGRESS (bắt đầu 2026-11-03).
+**Trạng thái:** DONE (bắt đầu 2026-11-03; đóng sprint 2026-11-17) — 8/8 task hoàn thành, US-03 + US-04 đã merge `main` (commit `c513f01`). Các mục tồn đọng đã verify ngày 2026-11-17 trên backend/DB/Storage/trình duyệt thật (dữ liệu test đã dọn: products = 0, bucket `avatars`/`products` rỗng, avatar member về null):
+- API: member nhận 403 ở `GET/POST/PUT/DELETE /api/admin/products`; limiter `PUT /api/admin/products/:id` chặn từ lần 61 (60 lượt đầu qua, sau đó 429); ảnh > 5MB -> 413 `FILE_TOO_LARGE`; Storage lỗi (giả lập) -> 502 `UPLOAD_FAILED` và không để lại dòng DB; nhánh race `23503` lúc xoá danh mục -> 409 `CATEGORY_NOT_EMPTY` (giả lập bỏ qua bước đếm, FK thật chặn); `loginLimiter` 10 lần 401 rồi 429 kèm `Retry-After`
+- UI: hộp thoại xoá ảnh `/profile` đúng nội dung, focus mặc định ở `Huỷ`, Esc đóng và trả focus về nút `Xoá ảnh`, xác nhận xoá thành công; form sửa sản phẩm ở 375px không cuộn ngang, bố cục ổn; `document.title` đúng `<Tên trang> — Try-on` ở mọi route (guest và đã đăng nhập)
+- Ghi chú: `GET /api/health` đôi khi trả 503 ngay lúc backend vừa khởi động lại (`node --watch` restart khi đổi file); Supabase MCP `execute_sql` báo `28P01` (mật khẩu DB), cần kết nối lại MCP trước khi áp migration ở Sprint 3. Avatar chỉ "khuyến nghị" tỉ lệ/cạnh ngắn (không chặn) theo US-02
+- **Chuyển sang Sprint 3:** thêm test runner + test tự động cho các luồng đã verify tay (Backend + Frontend). Chưa làm ở Sprint 2 vì thuộc hạ tầng mới, cần ghi vào backlog Sprint 3 trước khi triển khai
 
 **Quyết định phạm vi (2026-11-03, mặc định khuyến nghị do người dùng yêu cầu tiếp tục):**
 - Xoá danh mục còn sản phẩm: chặn, trả 409 (phải xoá/chuyển sản phẩm trước)
@@ -64,7 +68,7 @@ User Stories: US-03 (quản lý danh mục), US-04 (thêm / sửa / xoá sản p
 - [x] Xử lý xoá danh mục còn sản phẩm theo quyết định ở Task 1
 - **Đã validate bởi agent chính ngày 2026-11-03:** curl (guest 401, member 403, admin CRUD, trùng tên/slug/"váy" 409, rỗng/trống/51 ký tự 400, JSON hỏng 400, id sai/không tồn tại 404, xoá khi còn sản phẩm 409 CATEGORY_NOT_EMPTY); trình duyệt thật (thêm kèm chuẩn hoá khoảng trắng, lỗi rỗng/trùng trong hộp thoại, Esc, Enter, sửa, reload giữ dữ liệu, huỷ/xác nhận xoá, hộp thoại chặn xoá khi còn sản phẩm, mobile 375px dùng thẻ không cuộn ngang); lint + build sạch; dữ liệu test đã dọn (3 danh mục seed, 0 sản phẩm). Chưa verify: nhánh race `23503` lúc xoá; `/profile` sau khi `ConfirmDialog` được mở rộng (chưa mở lại hộp thoại xoá ảnh).
 - **Phát sinh (cần làm ở Task 5):** (1) validator tên từ chối ký tự thay thế U+FFFD (tên lỗi encoding như `v�y` hiện được lưu, slug `v-y`); (2) focus sau khi xoá danh mục rơi về `body` thay vì `h2` như `screens.md` mô tả, kiểm tra lại cách trả focus.
-- Ghi chú triển khai của agent-coder: code xong backend (`categoryController/Service/Validator`, route trong `adminRoutes.js`) và frontend (`AdminCategoriesPage`, `CategoryFormDialog`, `CategoryList`, `adminApi.js`, `FormDialog`/`EmptyState`/`ErrorState`, Toast `tone: error`, ConfirmDialog `busyLabel`/`confirmTone`). Đã verify: lint + build sạch, validator/slug bằng node, service với DB thật (tạo/trùng tên/trùng slug/sửa/404/xoá, đã dọn). Chưa verify: HTTP qua curl (401/403/uuid sai), UI trên trình duyệt, nhánh 409 CATEGORY_NOT_EMPTY thực (chưa có sản phẩm). Vì vậy 3 công việc trên để `[ ]`.
+- Ghi chú triển khai của agent-coder: code xong backend (`categoryController/Service/Validator`, route trong `adminRoutes.js`) và frontend (`AdminCategoriesPage`, `CategoryFormDialog`, `CategoryList`, `adminApi.js`, `FormDialog`/`EmptyState`/`ErrorState`, Toast `tone: error`, ConfirmDialog `busyLabel`/`confirmTone`). Đã verify: lint + build sạch, validator/slug bằng node, service với DB thật (tạo/trùng tên/trùng slug/sửa/404/xoá, đã dọn). Chưa verify: HTTP qua curl (401/403/uuid sai), UI trên trình duyệt, nhánh 409 CATEGORY_NOT_EMPTY thực (chưa có sản phẩm). (Đã được agent chính validate sau đó, xem mục "Đã validate" ở trên nên 3 công việc đã `[x]`.)
 
 **Acceptance Criteria:** admin thêm, sửa, xoá được danh mục; trùng tên bị chặn; xoá có xác nhận; dữ liệu lưu bền sau reload; user thường không gọi được API.
 
