@@ -1,6 +1,6 @@
 # Thiết kế Database & Storage
 
-> Phạm vi hiện tại: **Sprint 1** (US-01, US-02) + **Sprint 2** (US-03 danh mục, US-04 sản phẩm). Migrations: `migrations/001` → `007` (`004` cột `phone`, `005` grant `service_role` – áp 2026-11-03; `006` bảng `categories`/`products` + seed 3 danh mục, `007` bucket `products` – áp 2026-11-03).
+> Phạm vi hiện tại: **Sprint 1** (US-01, US-02) + **Sprint 2** (US-03 danh mục, US-04 sản phẩm) + **Sprint 3 – thiết kế** (US-05, US-06 phòng thử đồ). Migrations: `migrations/001` → `009` (`004` cột `phone`, `005` grant `service_role` – áp 2026-11-03; `006` bảng `categories`/`products` + seed 3 danh mục, `007` bucket `products` – áp 2026-11-03; `008` bảng `try_on_results` + cột `profiles.try_on_consent_at`, `009` bucket `try-on-results` – **đã áp qua MCP 2026-11-17**).
 
 ## Mục lục
 1. [Nguyên tắc kiến trúc](#1-nguyên-tắc-kiến-trúc)
@@ -15,6 +15,8 @@
 10. [Bảng `categories` (Sprint 2)](#10-bảng-categories-sprint-2)
 11. [Bảng `products` (Sprint 2)](#11-bảng-products-sprint-2)
 12. [Storage: bucket `products` (Sprint 2)](#12-storage-bucket-products-sprint-2)
+13. [Bảng `try_on_results` + cột `profiles.try_on_consent_at` (Sprint 3)](#13-bảng-try_on_results--cột-profilestry_on_consent_at-sprint-3)
+14. [Storage: bucket `try-on-results` (Sprint 3)](#14-storage-bucket-try-on-results-sprint-3)
 
 ## 1. Nguyên tắc kiến trúc
 
@@ -67,7 +69,34 @@ erDiagram
     }
     CATEGORIES ||--o{ PRODUCTS : "có (xoá danh mục còn SP bị chặn)"
     PRODUCTS ||--|| STORAGE_OBJECTS_PRODUCTS : "image_path trỏ tới (logic, không FK)"
+
+    TRY_ON_RESULTS {
+        uuid id PK
+        uuid profile_id FK "ON DELETE CASCADE"
+        uuid product_id FK "ON DELETE CASCADE"
+        text input_key "sha256 hex, khoá cache"
+        text avatar_path "snapshot đầu vào"
+        text product_image_path "snapshot đầu vào"
+        text provider "stub | gemini"
+        text model "nullable"
+        text status "pending | processing | succeeded | failed"
+        text result_path "nullable, bucket try-on-results"
+        text error_code "nullable, khi failed"
+        text provider_job_id "nullable, nội bộ"
+        timestamptz created_at
+        timestamptz updated_at "trigger"
+        timestamptz completed_at "nullable"
+    }
+    STORAGE_OBJECTS_TRY_ON {
+        text bucket_id "= 'try-on-results'"
+        text name "{profile_id}/{product_id}/{id}.{jpg|png|webp}"
+    }
+    PROFILES ||--o{ TRY_ON_RESULTS : "sở hữu (Sprint 3)"
+    PRODUCTS ||--o{ TRY_ON_RESULTS : "được thử (Sprint 3)"
+    TRY_ON_RESULTS ||--o| STORAGE_OBJECTS_TRY_ON : "result_path trỏ tới (logic, không FK)"
 ```
+
+`PROFILES` thêm cột `try_on_consent_at timestamptz` nullable ở migration `008` (Sprint 3, đã áp 2026-11-17).
 
 ## 3. Bảng `profiles`
 
@@ -123,8 +152,9 @@ Path có timestamp thay vì ghi đè `avatar.<ext>` để: tránh cache trình d
 
 - `profiles`: **bật RLS, không có policy nào** cho `anon`/`authenticated` + `REVOKE ALL` khỏi hai role này. Service role có `BYPASSRLS` nên backend vẫn hoạt động. Kết quả: dù anon key bị lộ, PostgREST không đọc/ghi được `profiles` (email, hash, số đo cơ thể).
 - **`service_role` cần GRANT mức bảng**: bypass RLS không thay thế GRANT. Project Supabase này không tự cấp quyền cho bảng mới, nên migration `005` cấp `select, insert, update, delete` trên `profiles` cho `service_role`. **Mọi bảng mới ở sprint sau phải có `grant ... to service_role` trong migration tạo bảng** (và không cấp cho `anon`/`authenticated`).
+- `try_on_results` (migration `008`, Sprint 3, đã áp 2026-11-17): cùng mô hình – RLS bật, 0 policy, REVOKE anon/authenticated, GRANT `service_role` trong migration tạo bảng. Mọi truy vấn của backend lọc `profile_id = sub` (kể cả GET theo id: không thuộc user → 404).
 - `categories`, `products` (migration `006`): cùng mô hình – RLS bật, 0 policy, `REVOKE ALL` anon/authenticated, `GRANT select, insert, update, delete` cho `service_role` ngay trong migration tạo bảng. Đã verify 2026-11-03: `service_role` có quyền (project còn tự gán thêm `REFERENCES/TRIGGER/TRUNCATE`, giống `profiles`), anon/authenticated không có dòng nào.
-- `storage.objects` (bucket `avatars`, `products`): **không tạo policy** cho anon/authenticated → chỉ service role upload/đọc/xoá; bucket private nên không có URL public.
+- `storage.objects` (bucket `avatars`, `products`, `try-on-results`): **không tạo policy** cho anon/authenticated → chỉ service role upload/đọc/xoá; bucket private nên không có URL public.
 - Service role key chỉ nằm trong `backend/.env`, không bao giờ gửi về frontend hay log.
 - Dữ liệu nhạy cảm (ảnh toàn thân, chiều cao, cân nặng): không log, chỉ trả cho chính chủ (lọc theo `id = sub` của JWT).
 
@@ -153,6 +183,13 @@ API dùng `camelCase`, DB dùng `snake_case`. API contract chi tiết: `design/f
 | `price` | `products.price` | API sản phẩm | Số nguyên VND > 0 |
 | `imageUrl` (response) | `products.image_path` | API sản phẩm | Signed URL bucket `products`; không trả `image_path` |
 | `image` (file upload) | `products.image_path` | POST/PUT sản phẩm (multipart) | ≤ 5MB, jpeg/png (magic bytes) |
+| `tryOnConsentAt` | `profiles.try_on_consent_at` | `Profile` (GET/PUT `/api/user/profile`), `POST /api/try-on/consent` | Sprint 3; `null` = chưa đồng ý |
+| `productId` (request/response) | `try_on_results.product_id` | `POST /api/try-on`, `TryOn` | uuid sản phẩm tồn tại |
+| `status` (response) | `try_on_results.status` | `TryOn` | `pending`/`processing` gộp thành `processing` |
+| `imageUrl` (response `TryOn`) | `try_on_results.result_path` | `TryOn` | Signed URL bucket `try-on-results`; không trả `result_path` |
+| `error.code` (response `TryOn`) | `try_on_results.error_code` | `TryOn` khi `failed` | |
+| `simulated` (response) | `try_on_results.provider = 'stub'` | `TryOn` | Không trả tên provider |
+| `completedAt` | `try_on_results.completed_at` | `TryOn` | |
 
 ## 7. Seed (dev)
 
@@ -193,7 +230,7 @@ File `migrations/003_seed_profiles.sql`. **Chỉ dùng dev/test, không chạy p
 
 Chỉ ghi nhận hướng, **chưa tạo**:
 - **Epic 2:** đã thiết kế và tạo ở Sprint 2 – xem mục 10–12 (quyết định cuối cùng khác hướng ban đầu: giá `integer`, cột `image_path`, không `is_active`, bucket private).
-- **Epic 3:** `try_on_results` (profile_id, product_id, avatar_path dùng lúc sinh, result_path, status…) để cache ảnh GenAI; unique (profile_id, product_id, avatar_path); bucket private `try-on-results`. Khi user đổi ảnh/số đo → kết quả cũ hết hiệu lực.
+- **Epic 3:** đã thiết kế ở Sprint 3 – xem mục 13–14 (khác hướng ban đầu: khoá cache là `input_key` băm cả provider/model/phiên bản prompt/ảnh sản phẩm thay vì chỉ `avatar_path`; unique index **một phần** cho `succeeded` và job đang chạy; thêm cột `profiles.try_on_consent_at`).
 - **Epic 4:** `cart_items` (profile_id, product_id, quantity), `orders`, `order_items` (giá snapshot).
 - Dùng lại `public.set_updated_at()` cho bảng mới; giữ nguyên tắc RLS bật + không policy + revoke anon/authenticated + **grant `service_role`**.
 
@@ -263,3 +300,68 @@ Backend vẫn kiểm tra magic bytes (`detectImageType` trong `avatarService.js`
 **Luồng xoá sản phẩm:** delete row **trước** → xoá object (best-effort, chỉ log). Thứ tự này đảm bảo không có row trỏ tới file đã mất; lỗi Storage chỉ để lại file mồ côi.
 
 **Xoá danh mục:** chỉ thành công khi không còn sản phẩm, nên không bao giờ phải dọn Storage.
+
+**Sprint 3:** thay ảnh / xoá sản phẩm phải dọn thêm ảnh kết quả thử đồ của sản phẩm đó (mục 13, `design/flows/try-on-room.md` mục 8).
+
+## 13. Bảng `try_on_results` + cột `profiles.try_on_consent_at` (Sprint 3)
+
+Migration `008_create_try_on_results.sql` – **ĐÃ ÁP 2026-11-17** ( chỉ sửa comment theo Q12 đã chốt, cấu trúc không đổi). Provider: `stub` (mặc định) / `gemini`. Flow: `design/flows/try-on-room.md`.
+
+**Cột mới ở `profiles`:** `try_on_consent_at timestamptz null` – thời điểm user đồng ý gửi ảnh toàn thân tới dịch vụ AI (Q14). Không cần index (đọc theo PK). Trả ra API dạng `tryOnConsentAt`.
+
+| Cột | Kiểu | Null | Mặc định | Ràng buộc / ghi chú |
+|-----|------|------|----------|---------------------|
+| `id` | `uuid` | không | `gen_random_uuid()` | PK; dùng làm tên file kết quả |
+| `profile_id` | `uuid` | không | | FK → `profiles.id` `ON DELETE CASCADE` |
+| `product_id` | `uuid` | không | | FK → `products.id` `ON DELETE CASCADE` |
+| `input_key` | `text` | không | | SHA-256 hex (64 ký tự) của `provider`, `model`, phiên bản prompt (`promptVersion`, hằng trong backend – không có cột riêng), `avatar_path`, `product_image_path` (+ `height_cm`, `weight_kg` nếu provider dùng số đo). CHECK `^[0-9a-f]{64}$` |
+| `avatar_path` | `text` | không | | Snapshot `profiles.avatar_path` lúc tạo job; CHECK bắt đầu bằng `{profile_id}/`. Job đọc ảnh theo snapshot này, không theo giá trị hiện tại |
+| `product_image_path` | `text` | không | | Snapshot `products.image_path`; CHECK bắt đầu bằng `{product_id}/` |
+| `provider` | `text` | không | | `stub` hoặc `gemini` (Q12 đã chốt 2026-11-17; CHECK định dạng chung để thêm provider sau không cần migration). CHECK `^[a-z0-9_-]{1,30}$`. Không trả client (chỉ suy ra `simulated`) |
+| `model` | `text` | có | | Tên model thực dùng (vd `gemini-3.1-flash-image`; stub: `stub`) |
+| `status` | `text` | không | `'pending'` | CHECK `pending` / `processing` / `succeeded` / `failed` |
+| `result_path` | `text` | có | | Object path bucket `try-on-results`; CHECK có giá trị **khi và chỉ khi** `succeeded`; CHECK bắt đầu bằng `{profile_id}/{product_id}/` |
+| `error_code` | `text` | có | | Bắt buộc khi `failed`; CHECK `^[A-Z_]{1,40}$` (`GENERATION_FAILED`, `GENERATION_TIMEOUT`, `INPUT_REJECTED`, `PROVIDER_UNAVAILABLE`) |
+| `provider_job_id` | `text` | có | | Id phía provider để debug (Gemini: `responseId` của phản hồi, nếu có), không trả client |
+| `created_at` | `timestamptz` | không | `now()` | Dùng đếm hạn mức ngày |
+| `updated_at` | `timestamptz` | không | `now()` | Trigger `try_on_results_set_updated_at`; dùng phát hiện job treo |
+| `completed_at` | `timestamptz` | có | | CHECK có giá trị **khi và chỉ khi** `succeeded`/`failed` |
+
+**Indexes**
+- `try_on_results_succeeded_unique` – unique (`profile_id, product_id, input_key`) `WHERE status = 'succeeded'`: tra cache, 1 kết quả mỗi khoá.
+- `try_on_results_active_unique` – unique (`profile_id, product_id, input_key`) `WHERE status IN ('pending','processing')`: chống sinh trùng khi 2 request song song (lỗi `23505` → đọc lại row).
+- `try_on_results_profile_created_idx` (`profile_id, created_at`): đếm hạn mức ngày, dọn theo user.
+- `try_on_results_product_id_idx` (`product_id`): dọn khi admin thay/xoá ảnh sản phẩm; phục vụ FK cascade khi xoá sản phẩm.
+- Row `failed` không bị unique chặn → giữ nhiều lần thử làm nhật ký.
+
+**Quy tắc backend**
+- Chuyển trạng thái có điều kiện: `pending → processing` (`WHERE status = 'pending'`), `processing → succeeded|failed` (`WHERE status = 'processing'`); 0 dòng → row đã bị dọn/đổi, job dừng và xoá object vừa upload. Đặt `completed_at = now()` khi kết thúc.
+- Job treo: `pending`/`processing` có `updated_at < now() - (TRY_ON_TIMEOUT_MS + 30 s)` → `failed` + `GENERATION_TIMEOUT` khi đọc lại.
+- Hạn mức ngày: `count(*) WHERE profile_id = $1 AND status <> 'failed' AND created_at >= <00:00 hôm nay giờ Asia/Ho_Chi_Minh>`.
+- Dọn dữ liệu (xoá row trước, object sau, best-effort): thay/xoá ảnh toàn thân → theo `profile_id`; thay ảnh/xoá sản phẩm → theo `product_id` (với xoá sản phẩm: SELECT `result_path` **trước** khi DELETE sản phẩm vì cascade xoá mất row).
+- Select cột tường minh; không trả `*_path`, `input_key`, `provider`, `provider_job_id`.
+
+## 14. Storage: bucket `try-on-results` (Sprint 3)
+
+Migration `009_create_try_on_results_bucket.sql` – **ĐÃ ÁP 2026-11-17**.
+
+| Thuộc tính | Giá trị |
+|------------|---------|
+| Bucket id/name | `try-on-results` |
+| Public | **false (private)** – ảnh chứa hình người dùng |
+| `file_size_limit` | 10485760 (10 MB) |
+| `allowed_mime_types` | `image/jpeg`, `image/png`, `image/webp` |
+| Object path | `{profile_id}/{product_id}/{try_on_result_id}.{jpg\|png\|webp}` (server đặt, đuôi và `contentType` theo magic bytes của ảnh provider trả – ảnh Gemini có thể khác kích thước/mime ảnh vào; jpeg/png/webp đã đủ) |
+| Truy cập | Chỉ backend (service role), không policy. Client nhận signed URL TTL 3600 s, chỉ cho chủ sở hữu |
+
+**Quyết định thiết kế (Sprint 3)**
+
+| Vấn đề | Quyết định | Lý do |
+|--------|-----------|-------|
+| Lưu ảnh kết quả ở đâu | Bucket private riêng, không dùng URL của provider | Gemini trả ảnh base64 trong phản hồi (không có URL lưu phía provider); cache cần bền và nằm trong kiểm soát của dự án |
+| Khoá cache | `input_key` băm (provider, model, phiên bản prompt, ảnh người, ảnh sản phẩm, [số đo]) | Một cột cho mọi yếu tố đầu vào; đổi provider/model/prompt/ảnh tự sinh lại, không cần migration khi thêm yếu tố (vì vậy không thêm cột `prompt_version`) |
+| 1 bảng cho cache + job | Có (`status`) | Đơn giản, đủ cho 1 instance; nhật ký lỗi nằm cùng chỗ |
+| Hạn mức lưu ở đâu | Đếm từ `try_on_results` | Bền qua restart; không cần bảng riêng |
+| FK cascade | `ON DELETE CASCADE` tới `profiles`, `products` | Kết quả vô nghĩa khi người/sản phẩm mất; khác `categories → products` (RESTRICT) vì không có rủi ro mất dữ liệu nghiệp vụ. Object phải dọn bằng code |
+| Snapshot path đầu vào | Có (`avatar_path`, `product_image_path`) | Job chạy sau khi request trả về; đọc đúng ảnh tại thời điểm yêu cầu; dọn theo ảnh cũ |
+| Đồng ý xử lý ảnh | Cột `profiles.try_on_consent_at` | Ảnh toàn thân gửi tới Google Gemini API (bên thứ ba) cần đồng ý rõ ràng, lưu thời điểm để kiểm chứng (Q14) |

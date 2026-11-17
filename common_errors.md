@@ -4,7 +4,7 @@ Nhật ký các lỗi đã gặp khi làm dự án và cách sửa, nhóm theo l
 
 Mỗi mục: **Triệu chứng** → **Nguyên nhân** → **Cách sửa / phòng tránh**.
 
-Cập nhật lần cuối: 2026-11-03 (Sprint 1, Task 5–7).
+Cập nhật lần cuối: 2026-11-17 (Sprint 3, Task 1).
 
 ## Mục lục
 1. [Database / Supabase](#1-database--supabase)
@@ -37,6 +37,11 @@ Cập nhật lần cuối: 2026-11-03 (Sprint 1, Task 5–7).
 - **Nguyên nhân:** Supabase MCP yêu cầu người dùng xác nhận các câu lệnh ghi (DELETE/UPDATE); chạy trong subagent nền thì không ai xác nhận kịp.
 - **Cách sửa:** agent chính chạy lại lệnh ở foreground để người dùng xác nhận.
 - **Phòng tránh:** subagent KHÔNG chịu trách nhiệm xoá dữ liệu test qua MCP: yêu cầu nó liệt kê email test, agent chính xoá. Dùng `delete ... where email like 'test.%@example.com' returning email` để xoá gọn và thấy kết quả.
+
+### 1.4 `apply_migration` gọi song song -> trùng version
+- **Triệu chứng:** gọi 2 `apply_migration` cùng lúc, cái sau lỗi `23505 duplicate key ... schema_migrations_pkey (version)`.
+- **Nguyên nhân:** version migration lấy theo thời gian đến giây; hai lệnh chạy song song nhận cùng version. Lệnh lỗi bị rollback hoàn toàn nên chưa áp gì.
+- **Cách sửa / phòng tránh:** chạy migration **tuần tự** (008 xong mới 009), rồi `list_migrations` để xác nhận.
 
 ---
 

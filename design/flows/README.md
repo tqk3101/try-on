@@ -2,6 +2,7 @@
 
 > Sprint 1, Task 4: US-01 (đăng ký, đăng nhập, logout, bảo vệ route), US-02 (hồ sơ, ảnh toàn thân).
 > Sprint 2, Task 2: US-03 (danh mục), US-04 (sản phẩm) – khu vực admin và API đọc cho Sprint 3.
+> Sprint 3, Task 1 (2026-11-17; Q12 đã chốt: Gemini, `stub` mặc định; Q13–Q22 đã chốt theo mặc định 2026-11-17): US-05, US-06 – phòng thử đồ, sinh ảnh GenAI bất đồng bộ + cache.
 > Đọc kèm `design/database/schema.md` (`profiles`, `categories`, `products`, bucket `avatars`, `products`). Code cài đặt **đúng** theo tài liệu này. Nếu cần đổi, cập nhật tài liệu trước.
 
 ## Mục lục
@@ -25,6 +26,7 @@
 | [avatar-upload.md](avatar-upload.md) | Upload ảnh toàn thân `PUT /api/user/profile/avatar` và xoá ảnh `DELETE /api/user/profile/avatar` (Supabase Storage) | Task 7 |
 | [category-management.md](category-management.md) | **Sprint 2.** Phân quyền admin (`requireAdmin`), CRUD `/api/admin/categories`, `GET /api/categories` | S2 Task 3, 4, 7 |
 | [product-management.md](product-management.md) | **Sprint 2.** CRUD `/api/admin/products` (multipart ảnh flat lay, bucket `products`), `GET /api/categories/:id/products` | S2 Task 5, 6, 7 |
+| [try-on-room.md](try-on-room.md) | **Sprint 3.** Provider GenAI (Gemini, `stub` mặc định; prompt cố định, ánh xạ lỗi), `POST /api/try-on` (202 + polling `GET /api/try-on/:id`), cache `try_on_results`, hạn mức, đồng ý xử lý ảnh, dọn kết quả khi đổi ảnh, luồng `/try-on` (mũi tên/vuốt, prefetch) | S3 Task 1, 3, 4, 6 |
 
 ## 2. Quy ước chung
 
@@ -94,6 +96,15 @@
 | GET | `/api/categories` | Bearer (mọi role) | – | 200 `data: { categories }` | 401, 500 |
 | GET | `/api/categories/:id/products` | Bearer (mọi role) | – | 200 `data: { category, products }` | 401, 404 `CATEGORY_NOT_FOUND`, 500 |
 
+**Sprint 3** (chi tiết, đối tượng `TryOn`, `TryOnQuota`: `try-on-room.md` mục 4). Mọi route: Bearer (mọi role), lỗi chung 401 / 500. `Profile` thêm trường `tryOnConsentAt` (bổ sung, không phá client cũ).
+
+| Method | Path | Auth | Request | Thành công | Mã lỗi riêng |
+|--------|------|------|---------|------------|--------------|
+| POST | `/api/try-on` | Bearer | JSON `{ productId }` | 200 `data: { tryOn, quota }` (cache / job đang chạy) · **202** `data: { tryOn, quota }` (job mới) | 400 `VALIDATION_ERROR` / `BAD_REQUEST`, 404 `PRODUCT_NOT_FOUND`, 409 `PROFILE_INCOMPLETE` / `TRY_ON_CONSENT_REQUIRED`, 429 `TRY_ON_QUOTA_EXCEEDED` / `TOO_MANY_REQUESTS`, 503 `TRY_ON_UNAVAILABLE` |
+| GET | `/api/try-on/:id` | Bearer | – | 200 `data: { tryOn }` | 404 `TRY_ON_NOT_FOUND`, 429 |
+| GET | `/api/try-on/quota` | Bearer | – | 200 `data: { quota }` | – |
+| POST | `/api/try-on/consent` | Bearer | – | 200 `data: { profile }` (idempotent) | 429 |
+
 Không có endpoint logout phía server (xem `logout-protected-routes.md`). Mọi route lạ dưới `/api` trả 404 `NOT_FOUND` (đã có).
 
 ## 4. Bảng mã lỗi
@@ -112,14 +123,21 @@ Không có endpoint logout phía server (xem `logout-protected-routes.md`). Mọ
 | 404 | `NOT_FOUND` | Không tìm thấy tài nguyên yêu cầu. | Đã có |
 | 404 | `CATEGORY_NOT_FOUND` | Danh mục không tồn tại hoặc đã bị xoá. | Sprint 2: `:id` danh mục trên path không có / không phải uuid |
 | 404 | `PRODUCT_NOT_FOUND` | Sản phẩm không tồn tại hoặc đã bị xoá. | Sprint 2: `:id` sản phẩm trên path không có / không phải uuid |
+| 404 | `TRY_ON_NOT_FOUND` | Không tìm thấy ảnh thử đồ. | Sprint 3: `GET /api/try-on/:id` không tồn tại, không phải uuid hoặc thuộc user khác |
+| 409 | `PROFILE_INCOMPLETE` | Bạn cần hoàn thiện hồ sơ (ảnh toàn thân, chiều cao, cân nặng) để thử đồ. | Sprint 3: kèm `fields` (`avatar`, `heightCm`, `weightKg`) – ngoại lệ có chủ đích với quy tắc "`fields` chỉ đi với `VALIDATION_ERROR`" để client liệt kê mục thiếu |
+| 409 | `TRY_ON_CONSENT_REQUIRED` | Bạn cần đồng ý cho phép xử lý ảnh trước khi thử đồ. | Sprint 3: `profiles.try_on_consent_at` null |
 | 409 | `EMAIL_EXISTS` | Email này đã được đăng ký. | Register trùng email |
 | 409 | `CATEGORY_EXISTS` | Danh mục này đã tồn tại. | Sprint 2: `23505` trên `categories_name_lower_unique` / `categories_slug_unique` |
 | 409 | `CATEGORY_NOT_EMPTY` | Danh mục còn {N} sản phẩm. Hãy xoá hoặc chuyển các sản phẩm sang danh mục khác trước khi xoá. | Sprint 2: xoá danh mục còn sản phẩm (đếm trước, hoặc `23503` khi race – message không kèm số) |
 | 413 | `FILE_TOO_LARGE` | Ảnh vượt quá 5MB. Vui lòng chọn ảnh nhỏ hơn. | multer `LIMIT_FILE_SIZE` (avatar, ảnh sản phẩm) |
 | 415 | `UNSUPPORTED_FILE_TYPE` | Chỉ hỗ trợ ảnh JPG hoặc PNG. | MIME hoặc magic bytes không phải jpeg/png |
 | 429 | `TOO_MANY_REQUESTS` | Bạn thao tác quá nhiều lần. Vui lòng thử lại sau ít phút. | Rate limit (Sprint 2 thêm `productImageLimiter`: POST/PUT sản phẩm 60 / 15 phút theo user) |
+| 429 | `TRY_ON_QUOTA_EXCEEDED` | Bạn đã dùng hết lượt thử đồ hôm nay. Vui lòng quay lại vào ngày mai. | Sprint 3: hạn mức ngày (`TRY_ON_DAILY_LIMIT`), kèm `Retry-After` |
 | 500 | `INTERNAL_ERROR` | Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau. | Lỗi không lường trước, lỗi DB (đã có) |
 | 502 | `UPLOAD_FAILED` | Không thể tải ảnh lên lúc này. Vui lòng thử lại. | Supabase Storage lỗi khi upload |
+| 503 | `TRY_ON_UNAVAILABLE` | Tính năng thử đồ đang tạm ngưng. Vui lòng thử lại sau. | Sprint 3: `TRY_ON_PROVIDER=gemini` nhưng thiếu `GEMINI_API_KEY`, hoặc provider bị đánh dấu không khả dụng (model 404, key sai – `try-on-room.md` mục 2.4) |
+
+Lỗi **trong job** sinh ảnh không phải HTTP error: trả trong `tryOn.error.code` khi `status = failed` (`GENERATION_FAILED`, `GENERATION_TIMEOUT`, `INPUT_REJECTED`, `PROVIDER_UNAVAILABLE`), message ở `try-on-room.md` mục 7.
 | 0 (client) | `NETWORK_ERROR` | Không thể kết nối tới máy chủ. Vui lòng thử lại. | Fetch lỗi mạng (đã có trong `apiClient`) |
 
 ## 5. Route frontend
@@ -135,6 +153,8 @@ Không có endpoint logout phía server (xem `logout-protected-routes.md`). Mọ
 | `/admin/products` | Chỉ admin | Danh sách, query `?categoryId=` cho bộ lọc |
 | `/admin/products/new` | Chỉ admin | Form thêm (chọn sẵn danh mục nếu có `?categoryId=`) |
 | `/admin/products/:id/edit` | Chỉ admin | Form sửa (`GET /api/admin/products/:id`) |
+| `/try-on` | Bảo vệ (Sprint 3) | Chọn danh mục (`GET /api/categories`); hồ sơ chưa đủ → màn "Hoàn thiện hồ sơ" |
+| `/try-on/:categoryId` | Bảo vệ (Sprint 3) | Phòng thử đồ; query `?product=<productId>` giữ vị trí (cập nhật bằng `replace`) |
 | `*` | Public | 404 |
 
 Route admin là đề xuất của BA; bố cục chi tiết do `design/screens.md` (agent-uiux) chốt, nếu đổi path thì cập nhật bảng này.
@@ -170,7 +190,12 @@ Thêm `profile: '/profile'` vào `PATHS` và bật `AUTH_ENABLED = true` trong `
 | D23 | Signed URL ảnh sản phẩm | TTL **3600 giây** (như avatar); danh sách ký theo lô `createSignedUrls`; ký lỗi → `imageUrl: null` | Một cơ chế cho cả 2 bucket private |
 | D24 | Sắp xếp | Danh mục (admin + công khai): `created_at asc, id`. Sản phẩm admin: `created_at desc, id desc`. Sản phẩm công khai: `created_at asc, id` | Giữ thứ tự seed của PB; admin thấy sản phẩm vừa thêm; thứ tự công khai ổn định, khớp index, cố định "sản phẩm đầu tiên" US-05 |
 | D25 | Upload ảnh sản phẩm | multipart field `image`; POST bắt buộc, PUT tuỳ chọn; PUT luôn multipart; ảnh thiếu báo trong `fields.image` (không dùng mã riêng như `AVATAR_REQUIRED`) | Một parser cho cả 2 endpoint; form nhiều trường hiện mọi lỗi một lần |
-
+| D26 | (Sprint 3, đã chốt 2026-11-17) Sinh ảnh thử đồ | **Bất đồng bộ**: `POST /api/try-on` → 202 + job trong tiến trình Express (giới hạn đồng thời) → client poll `GET /api/try-on/:id` mỗi 2 s, dừng sau 120 s | Sinh ảnh mất 5–20 s; request ngắn, chuyển sản phẩm không huỷ job, prefetch tự nhiên. Hàng đợi ngoài để khi chạy nhiều instance |
+| D27 | (Sprint 3, đã chốt 2026-11-17) Cache | Bảng `try_on_results`, khoá `input_key` = SHA-256(provider, model, phiên bản prompt, avatar_path, image_path sản phẩm, [số đo]); unique một phần cho `succeeded` và job đang chạy; không TTL | Đổi đầu vào tự sinh lại; request trùng không sinh 2 lần, không trừ 2 lượt |
+| D28 | (Sprint 3, **đã chốt 2026-11-17**) Provider | Adapter theo env `TRY_ON_PROVIDER` = `stub` | `gemini`; mặc định `stub` (dev/test/CI); provider thật **Gemini** qua SDK `@google/genai` (tái dùng `geminiImageService.editImage`), model `GEMINI_IMAGE_MODEL` (mặc định `gemini-3.1-flash-image`), key `GEMINI_API_KEY`; prompt cố định ở backend có `promptVersion` (Q12; `try-on-room.md` mục 2) | Dev không tốn tiền, không gửi ảnh ra ngoài; đổi provider/model không đổi API; đã thử nghiệm thật 2026-11-17 (~10–12 s/ảnh) |
+| D29 | (Sprint 3, đã chốt 2026-11-17) Dọn kết quả | Thay/xoá ảnh toàn thân → xoá mọi kết quả của user; thay ảnh/xoá sản phẩm → xoá kết quả của sản phẩm; row trước, object sau, best-effort | Ảnh kết quả chứa hình người dùng phải đi theo ảnh gốc; không để object mồ côi |
+| D30 | (Sprint 3, đã chốt 2026-11-17) Hạn mức | 30 job thành công/đang chạy mỗi user mỗi ngày (giờ VN), đếm từ DB; cache hit và job `failed` không tính; limiter POST 20/phút, GET 120/phút theo user | Kiểm soát chi phí provider; không phạt người dùng vì lỗi hệ thống |
+| D31 | (Sprint 3, đã chốt 2026-11-17) Quyền xem kết quả | Mọi truy vấn lọc `profile_id = sub`; id của người khác → 404 `TRY_ON_NOT_FOUND` | Không lộ sự tồn tại của ảnh người khác |
 ## 7. Câu hỏi còn mở (cần người dùng chốt)
 
 Các mục dưới đã có **giá trị mặc định** trong flow; dev làm theo mặc định nếu người dùng chưa trả lời.
@@ -188,6 +213,17 @@ Các mục dưới đã có **giá trị mặc định** trong flow; dev làm th
 | Q9 | (Sprint 2) Trần giá 100.000.000 ₫ có phù hợp? | Giữ 100.000.000 (D21) |
 | Q10 | (Sprint 2) Có cần kiểm tra tỷ lệ/kích thước ảnh flat lay (như avatar) không? | **Đã chốt 2026-11-03:** kiểm tra kích thước tối thiểu 400×400 px (cả hai cạnh, lỗi 400 `fields.image`), không kiểm tra tỷ lệ; xem lại giới hạn tối đa ở Epic 3 khi biết yêu cầu đầu vào của model thử đồ |
 | Q11 | (Sprint 2) Sprint 3 truy cập danh mục theo `id` hay `slug`? | Theo `id` (`/api/categories/:id/products`); thêm tra theo slug ở Sprint 3 nếu cần URL thân thiện |
+| ~~Q12~~ | ~~(Sprint 3) Provider GenAI thật và ngân sách?~~ | **Đã chốt** (2026-11-17): `stub` mặc định; provider thật **Gemini** (`TRY_ON_PROVIDER=gemini`, model `gemini-3.1-flash-image` qua `GEMINI_IMAGE_MODEL`), dùng tier trả phí. Xem D28, `try-on-room.md` mục 2. Giá chính thức, chính sách dữ liệu và model chốt kiểm chứng ở Task 6. Phương án đã loại: FASHN `tryon-v1.6`, Vertex AI `virtual-try-on-001` |
+| Q13 | (Sprint 3, đã chốt 2026-11-17 theo mặc định) Bắt buộc chiều cao/cân nặng để thử đồ? | Có bắt buộc (cùng ảnh toàn thân); provider mặc định không dùng số đo nên không đưa vào khoá cache |
+| Q14 | (Sprint 3, đã chốt 2026-11-17 theo mặc định) Hộp thoại đồng ý gửi ảnh cho dịch vụ AI? | Có, một lần, lưu `profiles.try_on_consent_at` (migration `008`) |
+| Q15 | (Sprint 3, đã chốt 2026-11-17 theo mặc định) Prefetch bao nhiêu sản phẩm? | 1 sản phẩm kế tiếp, sau khi ảnh hiện tại xong |
+| Q16 | (Sprint 3, đã chốt 2026-11-17 theo mặc định) Loại trang phục (áo/quần/váy) cho provider? | Không thêm cột; một prompt Gemini chung cho mọi danh mục (model tự nhận món đồ trong ảnh 2); xem lại nếu Task 6 thấy quần/váy kém |
+| Q17 | (Sprint 3, đã chốt 2026-11-17 theo mặc định) Cuối danh sách: dừng hay quay vòng? | Dừng, mũi tên phải disabled, thẻ "Đã xem hết" |
+| Q18 | (Sprint 3, đã chốt 2026-11-17 theo mặc định) Hạn mức mỗi ngày? | 30 lượt/user/ngày (giờ VN), áp cả admin; cache hit và lỗi không tính |
+| Q19 | (Sprint 3, đã chốt 2026-11-17 theo mặc định) Điểm vào phòng thử đồ, đích sau đăng nhập? | Link "Phòng thử đồ" ở header + CTA landing; đích mặc định sau đăng nhập đổi sang `/try-on` |
+| Q20 | (Sprint 3, đã chốt 2026-11-17 theo mặc định) Có hiện nút "Thêm vào giỏ" sớm? | Không ở Sprint 3 (US-07 thuộc Sprint 4) |
+| Q21 | (Sprint 3, đã chốt 2026-11-17 theo mặc định) Test tự động phạm vi nào? | Vitest (backend + frontend), supertest cho HTTP với Supabase được mock; không E2E Playwright tự động ở Sprint 3 |
+| Q22 | (Sprint 3, đã chốt 2026-11-17 theo mặc định) Thời hạn giữ ảnh kết quả? | Giữ tới khi đầu vào đổi hoặc user xoá ảnh; không TTL |
 
 ## 8. Đề xuất thay đổi schema
 
