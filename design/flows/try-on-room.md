@@ -63,7 +63,7 @@ Chạy bằng `backend/scripts/gemini-try-on.js` với 1 cặp ảnh: ảnh ngư
 // generate({ personImage, garmentImage, signal }) -> { buffer, contentType, providerJobId? }
 // personImage/garmentImage: { buffer, contentType } tải từ Storage bằng service role
 // Ném TryOnProviderError(code) với code ∈ GENERATION_FAILED | GENERATION_TIMEOUT | INPUT_REJECTED | PROVIDER_UNAVAILABLE
-export default { name: 'gemini', model: process.env.GEMINI_IMAGE_MODEL?.trim() || 'gemini-3.1-flash-image', promptVersion: 'p1', usesMeasurements: false, generate };
+export default { name: 'gemini', model: process.env.GEMINI_IMAGE_MODEL?.trim() || 'gemini-3.1-flash-image', promptVersion: 'p2', usesMeasurements: false, generate };
 // stub: { name: 'stub', model: 'stub', promptVersion: 'stub', usesMeasurements: false, generate }
 ```
 - Biến môi trường (`backend/.env.example`, không ghi giá trị thật): `TRY_ON_PROVIDER` (`stub` | `gemini`, mặc định `stub`), `GEMINI_API_KEY` (đã có), `GEMINI_IMAGE_MODEL` (đã có, trống = `gemini-3.1-flash-image`), `TRY_ON_DAILY_LIMIT` (30), `TRY_ON_TIMEOUT_MS` (90000), `TRY_ON_MAX_CONCURRENCY` (3), `TRY_ON_STUB_MODE` (`success`), `TRY_ON_STUB_DELAY_MS` (2000). Không có biến key riêng cho thử đồ. `TRY_ON_PROVIDER=gemini` mà thiếu `GEMINI_API_KEY` → backend **khởi động vẫn được**, `POST /api/try-on` trả 503 `TRY_ON_UNAVAILABLE`.
@@ -74,7 +74,7 @@ export default { name: 'gemini', model: process.env.GEMINI_IMAGE_MODEL?.trim() |
 - Prompt là **hằng trong backend** (`services/tryOn/providers/gemini.js`), bản gốc là hằng `PROMPT` trong `backend/scripts/gemini-try-on.js`. Người mua/admin **không nhập prompt**; không chèn dữ liệu người dùng (tên, số đo, mô tả tự do) vào prompt.
 - Nguyên tắc (rút từ thử nghiệm 2.1): nêu vai trò từng ảnh; chỉ thay đúng món trong ảnh 2, chỉ phần trang phục nó che; giữ nguyên mọi món khác (quần, giày, thắt lưng, phụ kiện); giữ nguyên mặt, tóc, dáng, màu da, biểu cảm, nền, ánh sáng; giữ nguyên tư thế (cả hai tay), khung hình, tỉ lệ; bỏ qua nền/chữ/ma-nơ-canh của ảnh sản phẩm; tái tạo đúng màu, chất liệu, kiểu dáng, chi tiết.
 - Prompt mẫu hiện nhắc chi tiết riêng của áo vest (ve áo, cúc, túi) → Task 6 tổng quát hoá cho áo thun/sơ mi/váy/quần (chi tiết "nếu có") và thêm câu nhấn mạnh giữ đúng sắc độ màu; chọn bản tốt nhất trên bộ ảnh đo.
-- Hằng **`promptVersion`** (vd `p1`) đi cùng prompt và nằm trong `input_key`. **Mọi lần sửa prompt phải tăng `promptVersion`** → kết quả cache cũ không còn khớp khoá, tự sinh lại. Không thêm cột DB cho phiên bản prompt.
+- Hằng **`promptVersion`** (hiện `p2`: đã tổng quát hoá khỏi áo vest và nhấn mạnh sắc độ màu) đi cùng prompt và nằm trong `input_key`. **Mọi lần sửa prompt phải tăng `promptVersion`** → kết quả cache cũ không còn khớp khoá, tự sinh lại. Không thêm cột DB cho phiên bản prompt.
 - Một prompt chung cho mọi danh mục (Q16: không thêm cột loại trang phục). Nếu Task 6 thấy quần/váy kém rõ rệt → đề xuất cột loại trang phục ở sprint sau.
 
 ### 2.4 Ánh xạ lỗi Gemini → `error_code` của job
@@ -326,7 +326,7 @@ flowchart TD
     T0 -- "failed và user bấm Thử lại" --> T1[POST /api/try-on productId]
     T1 --> T2{Kết quả}
     T2 -- "200 succeeded" --> SHOW["Hiện ảnh thử đồ 3:4, tên, giá, n/N; nhãn Ảnh mô phỏng nếu simulated"]
-    T2 -- "200/202 processing" --> POLL["Trạng thái đang tạo: ảnh toàn thân mờ + thumbnail flat lay + Đang tạo ảnh bạn mặc {tên}… + bộ đếm giây; poll GET /api/try-on/:id mỗi 2 s"]
+    T2 -- "200/202 processing" --> POLL["Trạng thái đang tạo: ảnh toàn thân mờ + thumbnail flat lay + Đang thử đồ {tên}… + bộ đếm giây; poll GET /api/try-on/:id mỗi 2 s"]
     T2 -- "409 PROFILE_INCOMPLETE" --> G1
     T2 -- "409 TRY_ON_CONSENT_REQUIRED" --> K1
     T2 -- "429 TRY_ON_QUOTA_EXCEEDED" --> Q1["Thông báo hết lượt hôm nay + giờ reset; vẫn xem được ảnh flat lay và ảnh đã tạo"]

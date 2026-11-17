@@ -49,6 +49,19 @@ cp frontend/.env.example frontend/.env
 | `SUPABASE_URL`              | Project URL của Supabase                                         |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key (chỉ backend)                                   |
 
+Phòng thử đồ (tuỳ chọn, đều có mặc định; xem `backend/.env.example`):
+
+| Biến                     | Ý nghĩa                                                                                         |
+| ------------------------ | ----------------------------------------------------------------------------------------------- |
+| `TRY_ON_PROVIDER`        | `stub` (mặc định: trả lại ảnh toàn thân, nhãn "Ảnh mô phỏng", không gọi mạng) hoặc `gemini`    |
+| `GEMINI_API_KEY`         | Chỉ cần khi `TRY_ON_PROVIDER=gemini`; thiếu key thì backend vẫn chạy, `POST /api/try-on` trả 503 |
+| `GEMINI_IMAGE_MODEL`     | Trống = `gemini-3.1-flash-image`                                                                |
+| `TRY_ON_DAILY_LIMIT`     | Số lượt tạo ảnh / user / ngày giờ Việt Nam (mặc định 30; cache hit và job lỗi không tính)        |
+| `TRY_ON_TIMEOUT_MS`      | Thời gian tối đa mỗi lần tạo ảnh (mặc định 90000)                                               |
+| `TRY_ON_MAX_CONCURRENCY` | Số job tạo ảnh chạy đồng thời (mặc định 3)                                                      |
+| `TRY_ON_STUB_MODE`       | Chỉ cho `stub`: `success` (mặc định), `fail`, `slow` (vượt timeout)                          |
+| `TRY_ON_STUB_DELAY_MS`   | Độ trễ giả lập của `stub` (mặc định 2000)                                                      |
+
 Frontend (`frontend/.env`): `VITE_API_URL` (mặc định `http://localhost:3000/api`). Mọi biến `VITE_*` đều lộ ra trình duyệt, không đặt secret ở đây.
 
 Backend sẽ không khởi động và báo rõ biến nào còn thiếu nếu cấu hình chưa đủ.
@@ -85,6 +98,24 @@ cd frontend && npm run lint && npm run format && npm run build
 ```
 
 Production: backend `npm start`; frontend `npm run build` rồi `npm run preview`.
+
+## Test tự động
+
+```bash
+# Backend: Vitest + supertest
+cd backend && npm test            # chạy một lần
+cd backend && npm run test:watch  # chạy liên tục
+
+# Frontend: Vitest + jsdom + Testing Library
+cd frontend && npm test
+cd frontend && npm run test:watch
+```
+
+Test **không cần mạng, không cần `.env`, không chạm Supabase thật và không gọi Gemini thật**:
+
+- Backend (`backend/test/`): env giả và provider thử đồ `stub` đặt trong `backend/vitest.config.js`; `config/supabase.js` được mock bằng client giả trong bộ nhớ (`test/helpers/fakeSupabase.js`, `memoryTables.js`); provider Gemini chỉ được kiểm tra qua mock `editImage`. `test/setup.js` làm `fetch` ném lỗi, nên test lỡ dùng client thật sẽ thất bại ngay thay vì gọi mạng.
+- Frontend (`frontend/test/`): `VITE_API_URL` giả trong `vite.config.js`, `fetch` được stub trong từng test.
+- Test tự động không thay thế kiểm thử trên trình duyệt + DB/Storage thật theo Definition of Done của sprint.
 
 ## Cấu trúc repo
 

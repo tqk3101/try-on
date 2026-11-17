@@ -72,6 +72,23 @@ SVG inline trong `frontend/src/components/icons.jsx`: stroke 1.6, 24x24, `curren
 
 Component dùng riêng landing nằm ở `components/landing/` (xem `screens.md`). Khi thêm Button/Input/Card/Modal dùng chung ở sprint sau, đặt vào `components/` và ghi vào bảng trên.
 
+## Thành phần phòng thử đồ (Sprint 3)
+
+Chỉ dùng token hiện có; đặt trong `components/tryOn/`. Màn dùng: `screens.md` mục "Phòng thử đồ".
+
+| Component | File | Mô tả và quy tắc |
+|-----------|------|------------------|
+| TryOnStage | `components/tryOn/TryOnStage.jsx` | Khung ảnh `aspect-[3/4] rounded-[2rem] bg-sand shadow-card`, ảnh `object-contain`, `touch-pan-y select-none`, `role="group"` + `tabIndex=0`. Có **lớp trạng thái** (một lớp tại một thời điểm): ảnh thành công (fade-in) / đang tạo (ảnh toàn thân mờ + thẻ flat lay + "Đang thử đồ {tên}…" + bộ đếm giây) / lỗi (`role="alert"`, nền `red-50`, nút Thử lại) / hết lượt. Nhãn "Ảnh mô phỏng" (pill `bg-ink/80` chữ trắng). Chứa **nút mũi tên nổi** |
+| Nút mũi tên nổi | trong `TryOnStage` | `size-11` (44px), `rounded-full bg-surface/85 backdrop-blur shadow-card`, hover `scale-105`, `disabled:opacity-40`; đặt ở mép trong khung ảnh, giữa theo chiều dọc; luôn có `aria-label` ("Sản phẩm trước"/"Sản phẩm tiếp theo") |
+| ProductPanel | `components/tryOn/ProductPanel.jsx` | Cột thông tin: tên danh mục, `n/N`, tên, giá `formatVnd`, flat lay `w-24 aspect-[3/4]`, badge hạn mức (`sand` / `blush`, luôn có chữ), danh sách thu nhỏ (nút `w-14 min-h-11`, viền `accent` khi chọn), thẻ "Đã xem hết" |
+| ProfileGate | `components/tryOn/ProfileGate.jsx` | Màn "Hoàn thiện hồ sơ để thử đồ": 3 mục luôn hiện kèm chữ "Đã có"/"Còn thiếu", nút primary tới `/profile` |
+| ConsentDialog | `components/tryOn/ConsentDialog.jsx` | Bọc `ConfirmDialog` (nhãn "Đồng ý" primary / "Để sau") |
+| ConfirmDialog (mở rộng) | `components/profile/ConfirmDialog.jsx` | Thêm prop tuỳ chọn `error` (khung `role="alert"` đỏ nhạt giữa mô tả và nút); mặc định rỗng nên `/profile` và admin không đổi |
+| Token animation `animate-fade-in` | `index.css` (`@theme`) | `fade-in 0.4s ease-out`, chỉ `opacity` |
+| CheckIcon | `components/icons.jsx` | Dấu tích, cùng phong cách (stroke 1.6) |
+
+**Quy tắc áp dụng**: chữ trạng thái chờ chuẩn hoá "Đang thử đồ {tên}…"; bộ đếm giây không phải live region; mọi trạng thái (đang tạo, lỗi, hết lượt, cuối danh sách) có chữ, không chỉ màu/icon; chuyển sản phẩm không có animation trượt (tôn trọng `prefers-reduced-motion`).
+
 ## Thành phần admin dùng chung (Sprint 2)
 
 Chỉ dùng token hiện có (không thêm màu mới). Đặt trong `components/admin/` (riêng khu quản trị) hoặc `components/` (dùng chung) như cột "File dự kiến". Màn dùng: `screens.md` mục "Khu vực Admin".

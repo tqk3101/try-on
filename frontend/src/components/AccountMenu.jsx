@@ -49,6 +49,16 @@ export default function AccountMenu({ user, onLogout, inline = false, onNavigate
   const items = (
     <>
       <Link
+        to={PATHS.tryOn}
+        className={itemClass}
+        onClick={() => {
+          setOpen(false);
+          onNavigate?.();
+        }}
+      >
+        Phòng thử đồ
+      </Link>
+      <Link
         to={PATHS.profile}
         className={itemClass}
         onClick={() => {

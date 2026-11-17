@@ -11,6 +11,7 @@ export function notFoundHandler(req, res) {
 // eslint-disable-next-line no-unused-vars
 export function errorHandler(err, req, res, next) {
   if (err instanceof HttpError) {
+    if (err.retryAfterSeconds) res.set('Retry-After', String(err.retryAfterSeconds));
     return res.status(err.status).json({
       success: false,
       error: { code: err.code, message: err.message, ...(err.fields && { fields: err.fields }) },

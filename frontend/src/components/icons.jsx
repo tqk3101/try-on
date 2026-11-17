@@ -143,6 +143,14 @@ export function FolderIcon(props) {
   );
 }
 
+export function CheckIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="m5 12.5 4.5 4.5L19 7.5" />
+    </svg>
+  );
+}
+
 export function ImageIcon(props) {
   return (
     <svg {...base} {...props}>

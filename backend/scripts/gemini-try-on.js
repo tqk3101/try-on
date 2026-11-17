@@ -4,6 +4,8 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { editImage } from '../src/services/geminiImageService.js';
+// Dùng đúng prompt cố định của adapter thử đồ để thử nghiệm khớp với hành vi thật.
+import { TRY_ON_PROMPT } from '../src/services/tryOn/providers/gemini.js';
 
 const MIME_BY_EXT = {
   '.png': 'image/png',
@@ -11,14 +13,6 @@ const MIME_BY_EXT = {
   '.jpeg': 'image/jpeg',
   '.webp': 'image/webp',
 };
-
-const PROMPT =
-  'Image 1 is a photo of a person. Image 2 is a product photo of a garment (ignore its background, text and mannequin). ' +
-  'Edit image 1 so the person wears ONLY the garment shown in image 2, replacing only the clothing it covers. ' +
-  'Do not add or change any other clothing: keep every other item the person wears (trousers, shoes, belt, accessories) exactly as in image 1. ' +
-  'Keep the person’s face, hair, body shape, skin tone, expression, background and lighting unchanged. ' +
-  'Keep the exact same pose, including the position of both arms and hands, and the same framing and aspect ratio as image 1. ' +
-  'Reproduce the garment’s color, fabric, cut, lapels, buttons and pockets faithfully.';
 
 const [personPath, garmentPath, outputPath = 'try_on_result.png'] = process.argv.slice(2);
 if (!personPath || !garmentPath) {
@@ -37,7 +31,7 @@ async function loadImage(file) {
 try {
   const started = Date.now();
   const { images, texts } = await editImage({
-    prompt: PROMPT,
+    prompt: TRY_ON_PROMPT,
     images: [await loadImage(personPath), await loadImage(garmentPath)],
   });
   console.log(`Thời gian: ${((Date.now() - started) / 1000).toFixed(1)}s`);

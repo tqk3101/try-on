@@ -48,10 +48,10 @@ User Stories: US-05 (chọn danh mục → ảnh mình mặc sản phẩm đầu
 **Mô tả:** Mô tả màn hình và code UI (mock data, happy case + đủ trạng thái) cho `/try-on` và `/try-on/:categoryId`. Làm song song Task 3 sau khi Task 1 chốt contract.
 
 **Công việc:**
-- [ ] Cập nhật `design/screens.md` (mục mới "Phòng thử đồ"): chọn danh mục; phòng thử đồ (ảnh 3:4, tên, giá, "n/N", flat lay thu nhỏ, mũi tên, nhãn "Ảnh mô phỏng"); màn "Hoàn thiện hồ sơ"; hộp thoại đồng ý xử lý ảnh; trạng thái đang tạo (skeleton/ảnh toàn thân mờ + "Đang thử đồ {tên}…" + bộ đếm giây; hiện ngay khi chuyển sang sản phẩm chưa có ảnh vì không prefetch – Q15; mũi tên/vuốt/phím vẫn hoạt động, không chặn), lỗi theo `error.code` + Thử lại, hết lượt, danh mục rỗng, cuối danh sách; responsive 375/768/1280; a11y (`aria-live`, phím ←/→, vùng chạm 44 px)
-- [ ] Cập nhật `design/design-system.md` nếu thêm component dùng chung (ví dụ khung ảnh 3:4 có lớp trạng thái, nút mũi tên nổi)
-- [ ] Code UI với mock (`src/mocks/tryOnMock.js`): trang, component, vuốt bằng Pointer Events (`touch-action: pan-y`), phím ←/→, giữ vị trí `?product=` (replace), route trong `router.jsx` + `PATHS`, link "Phòng thử đồ" ở header/`AccountMenu`, CTA landing cho user đã đăng nhập, link "Vào phòng thử đồ" ở `/profile` khi hồ sơ đủ
-- [ ] Ghi danh sách điểm TODO nối API cụ thể cho agent-coder (common_errors 3.5)
+- [x] Cập nhật `design/screens.md` (mục mới "Phòng thử đồ"): chọn danh mục; phòng thử đồ (ảnh 3:4, tên, giá, "n/N", flat lay thu nhỏ, mũi tên, nhãn "Ảnh mô phỏng"); màn "Hoàn thiện hồ sơ"; hộp thoại đồng ý xử lý ảnh; trạng thái đang tạo (skeleton/ảnh toàn thân mờ + "Đang thử đồ {tên}…" + bộ đếm giây; hiện ngay khi chuyển sang sản phẩm chưa có ảnh vì không prefetch – Q15; mũi tên/vuốt/phím vẫn hoạt động, không chặn), lỗi theo `error.code` + Thử lại, hết lượt, danh mục rỗng, cuối danh sách; responsive 375/768/1280; a11y (`aria-live`, phím ←/→, vùng chạm 44 px)
+- [x] Cập nhật `design/design-system.md` nếu thêm component dùng chung (ví dụ khung ảnh 3:4 có lớp trạng thái, nút mũi tên nổi)
+- [x] Code UI với mock (`src/mocks/tryOnMock.js`; đã chạy thử trình duyệt 1280/768/375 px với Playwright, mọi trạng thái bằng `?mock=<kịch bản>`; chưa test thiết bị cảm ứng thật, Safari/Firefox, trình đọc màn hình thật): trang, component, vuốt bằng Pointer Events (`touch-action: pan-y`), phím ←/→, giữ vị trí `?product=` (replace), route trong `router.jsx` + `PATHS`, link "Phòng thử đồ" ở header/`AccountMenu`, CTA landing cho user đã đăng nhập, link "Vào phòng thử đồ" ở `/profile` khi hồ sơ đủ
+- [x] Ghi danh sách điểm TODO nối API cụ thể cho agent-coder (common_errors 3.5): cuối mục "Phòng thử đồ" ở `design/screens.md` ("Mock và điểm nối API") + `TODO(Task4)` trong `features/tryOn/tryOnApi.js`, `mocks/tryOnMock.js`
 
 **Acceptance Criteria:** `screens.md` khớp `try-on-room.md` mục 9 và US-05/06; UI chạy được với mock ở mọi trạng thái; chuyển sang sản phẩm chưa có ảnh → tên/giá/flat lay đổi ngay (< 100 ms) và khung ảnh hiện trạng thái đang tạo, nút mũi tên vẫn bấm được trong lúc chờ; không render nút "Thêm vào giỏ" (Q20) và không có nút xoá toàn bộ ảnh thử đồ (Q22); lint + build sạch; router import trang mới (common_errors 5.2); 375px không cuộn ngang.
 
@@ -60,17 +60,17 @@ User Stories: US-05 (chọn danh mục → ảnh mình mặc sản phẩm đầu
 ### 3. Backend API thử đồ + cache + hạn mức + bảo mật (Priority: High) — agent-coder
 **Mô tả:** Cài đặt đúng `design/flows/try-on-room.md` mục 2–8 với provider `stub`. Chỉ bắt đầu sau khi `008`/`009` đã áp và verify (common_errors 1.2).
 
-**Công việc:**
-- [ ] Provider adapter (`services/tryOn/providers/`) + `stub` (`TRY_ON_STUB_MODE` = `success | fail | slow`, `TRY_ON_STUB_DELAY_MS`, trả lại ảnh toàn thân, `simulated: true`); đọc env mới, cập nhật `backend/.env.example` (không giá trị thật) và README
-- [ ] `POST /api/try-on`, `GET /api/try-on/:id`, `GET /api/try-on/quota`, `POST /api/try-on/consent` (khai báo trước `/:id`); `Profile` thêm `tryOnConsentAt` (báo agent khác: thay đổi bổ sung contract)
-- [ ] Job runner trong tiến trình: semaphore `TRY_ON_MAX_CONCURRENCY`, timeout, chuyển trạng thái có điều kiện, kiểm tra magic bytes kết quả (mở rộng `detectImageType` cho webp nếu cần), upload `try-on-results`, dọn object khi UPDATE 0 dòng; phát hiện job treo
-- [ ] Cache theo `input_key` + xử lý `23505` khi request song song; hạn mức ngày giờ VN (429 `TRY_ON_QUOTA_EXCEEDED` + `Retry-After`); `tryOnLimiter` (POST 20/phút), `tryOnPollLimiter` (GET 120/phút)
-- [ ] Dọn kết quả: gắn vào `avatarService` (thay/xoá ảnh toàn thân) và `productService` (thay ảnh / xoá sản phẩm – SELECT `result_path` trước khi DELETE); không đổi hành vi API cũ
-- [ ] Adapter `gemini` (`services/tryOn/providers/gemini.js`) theo `try-on-room.md` mục 2.2–2.4: prompt **cố định ở backend** + hằng `promptVersion` (bản gốc: `PROMPT` trong `backend/scripts/gemini-try-on.js`), người dùng **không** nhập prompt, không chèn dữ liệu người dùng vào prompt; `input_key` gồm provider, model, `promptVersion`
-- [ ] Sửa `geminiImageService.editImage`: `GEMINI_IMAGE_MODEL` trống phải về mặc định (đang dùng `??` nên `''` thành model rỗng → dùng `||`); nhận `abortSignal`; trả thêm `finishReason`, `promptFeedback.blockReason`, `responseId`; phân biệt lỗi thiếu key. Giữ script `backend/scripts/gemini-*.js` chạy được
-- [ ] Ánh xạ lỗi Gemini → mã lỗi hiện có (mục 2.4): 404 model / 401-403 key → `PROVIDER_UNAVAILABLE` + đánh dấu provider không khả dụng (POST sau → 503 `TRY_ON_UNAVAILABLE`); 429 quota, 5xx, lỗi mạng → `PROVIDER_UNAVAILABLE`; abort → `GENERATION_TIMEOUT`; 400 ảnh vào, `blockReason`/`finishReason` an toàn → `INPUT_REJECTED`; không có ảnh trả về / ảnh không phải jpeg/png/webp / lỗi khác → `GENERATION_FAILED`. Test bằng mock, không gọi API thật
-- [ ] Ảnh kết quả lưu theo mime thực (magic bytes; Gemini có thể trả kích thước/mime khác ảnh vào)
-- [ ] Log không chứa ảnh/base64/URL ký/số đo/phản hồi thô provider/API key
+**Công việc (hoàn thành và verify 2026-11-18; ghi chú ở cuối mục):**
+- [x] Provider adapter (`services/tryOn/providers/`) + `stub` (`TRY_ON_STUB_MODE` = `success | fail | slow`, `TRY_ON_STUB_DELAY_MS`, trả lại ảnh toàn thân, `simulated: true`); đọc env mới, cập nhật `backend/.env.example` (không giá trị thật) và README
+- [x] `POST /api/try-on`, `GET /api/try-on/:id`, `GET /api/try-on/quota`, `POST /api/try-on/consent` (khai báo trước `/:id`); `Profile` thêm `tryOnConsentAt` (báo agent khác: thay đổi bổ sung contract)
+- [x] Job runner trong tiến trình: semaphore `TRY_ON_MAX_CONCURRENCY`, timeout, chuyển trạng thái có điều kiện, kiểm tra magic bytes kết quả (mở rộng `detectImageType` cho webp nếu cần), upload `try-on-results`, dọn object khi UPDATE 0 dòng; phát hiện job treo
+- [x] Cache theo `input_key` + xử lý `23505` khi request song song; hạn mức ngày giờ VN (429 `TRY_ON_QUOTA_EXCEEDED` + `Retry-After`); `tryOnLimiter` (POST 20/phút), `tryOnPollLimiter` (GET 120/phút)
+- [x] Dọn kết quả: gắn vào `avatarService` (thay/xoá ảnh toàn thân) và `productService` (thay ảnh / xoá sản phẩm – SELECT `result_path` trước khi DELETE); không đổi hành vi API cũ
+- [x] Adapter `gemini` (`services/tryOn/providers/gemini.js`) theo `try-on-room.md` mục 2.2–2.4: prompt **cố định ở backend** + hằng `promptVersion` (bản gốc: `PROMPT` trong `backend/scripts/gemini-try-on.js`), người dùng **không** nhập prompt, không chèn dữ liệu người dùng vào prompt; `input_key` gồm provider, model, `promptVersion`
+- [x] Sửa `geminiImageService.editImage`: `GEMINI_IMAGE_MODEL` trống phải về mặc định (đang dùng `??` nên `''` thành model rỗng → dùng `||`); nhận `abortSignal`; trả thêm `finishReason`, `promptFeedback.blockReason`, `responseId`; phân biệt lỗi thiếu key. Giữ script `backend/scripts/gemini-*.js` chạy được
+- [x] Ánh xạ lỗi Gemini → mã lỗi hiện có (mục 2.4): 404 model / 401-403 key → `PROVIDER_UNAVAILABLE` + đánh dấu provider không khả dụng (POST sau → 503 `TRY_ON_UNAVAILABLE`); 429 quota, 5xx, lỗi mạng → `PROVIDER_UNAVAILABLE`; abort → `GENERATION_TIMEOUT`; 400 ảnh vào, `blockReason`/`finishReason` an toàn → `INPUT_REJECTED`; không có ảnh trả về / ảnh không phải jpeg/png/webp / lỗi khác → `GENERATION_FAILED`. Test bằng mock, không gọi API thật
+- [x] Ảnh kết quả lưu theo mime thực (magic bytes; Gemini có thể trả kích thước/mime khác ảnh vào)
+- [x] Log không chứa ảnh/base64/URL ký/số đo/phản hồi thô provider/API key
 
 **Acceptance Criteria:**
 - Mọi mã lỗi và shape response đúng contract; không lộ `*_path`, `input_key`, provider
@@ -80,8 +80,9 @@ User Stories: US-05 (chọn danh mục → ảnh mình mặc sản phẩm đầu
 - Restart backend khi job đang chạy → GET sau ngưỡng trả `failed`/`GENERATION_TIMEOUT`, Thử lại được
 - Regression: API avatar, sản phẩm admin, API người mua Sprint 2 giữ nguyên hành vi; lint sạch
 
----
+**Ghi chú verify Task 3 (2026-11-18):** lint backend sạch. Chạy backend thật (cổng 3100) với provider `stub` trên Supabase thật: 53 + 18 kiểm tra bằng script tạm ngoài repo đều đạt (401/400/404, 409 PROFILE_INCOMPLETE/TRY_ON_CONSENT_REQUIRED, 202 → poll → succeeded, cache hit 200 không tăng quota, 2 POST song song → 1 row, 429 quota + Retry-After, limiter POST/GET, user khác 404, stub fail/slow, restart giữa chừng → GENERATION_TIMEOUT sau ngưỡng, dọn rows + object khi thay/xoá ảnh toàn thân và thay ảnh/xoá sản phẩm, regression Sprint 1–2). Ánh xạ lỗi Gemini, semaphore, kiểm tra magic bytes/webp, khoá cache, cửa sổ ngày VN: 12 nhóm kiểm tra bằng mock (không gọi API). Gemini thật: đã chạy ĐÚNG 1 job qua toàn stack bằng ảnh tổng hợp (thành công ~12 s, kết quả JPEG lưu theo magic bytes). Dữ liệu test đã dọn (`try_on_results` = 0, `storage.objects` = 0, không còn user/sản phẩm test). **Chưa làm:** gọi `ai.models.get` khi khởi động (best-effort, mục 2.2 try-on-room.md); chưa có test tự động trong repo (Task 5 viết bằng Vitest). `promptVersion` hiện là `p2` (prompt đã tổng quát hoá khỏi áo vest).
 
+---
 ### 4. Nối frontend – API phòng thử đồ (Priority: High) — agent-coder
 **Mô tả:** Thay mock của Task 2 bằng API thật; polling, debounce, xử lý lỗi theo `error.code`. Không prefetch (Q15).
 
@@ -100,10 +101,11 @@ User Stories: US-05 (chọn danh mục → ảnh mình mặc sản phẩm đầu
 **Mô tả:** Thêm hạ tầng test và test cho các luồng đã verify tay ở Sprint 1–2 và luồng mới Sprint 3. Có thể làm song song Task 2–3 (nên xong trước Task 4 để test luồng mới).
 
 **Công việc:**
-- [ ] Backend: Vitest (bản mới nhất, tra Context7) + `supertest`; script `npm test`; mock lớp `config/supabase.js` và Gemini (`geminiImageService`) (Q21: không chạm DB thật, không gọi API Gemini thật trong test tự động)
-- [ ] Backend test: validators (auth, profile, category, product), `utils/image.js` (magic bytes, kích thước PNG/JPEG), `requireAuth`/`requireAdmin` (401/403), envelope lỗi, limiter, multer map lỗi (413/415/400), try-on (khoá cache, hạn mức, chuyển trạng thái, stub success/fail/slow, 404 user khác)
-- [ ] Frontend: Vitest + jsdom + Testing Library; script `npm test`; test `safeRedirect`, `avatarCheck`, `format`, `authValidation`, guards (`RequireAuth`, `GuestOnly`, `RequireAdmin`), hook polling try-on (fake timers)
-- [ ] Cập nhật mục **Commands** trong `CLAUDE.md` và README
+- [x] Backend: Vitest (bản mới nhất, tra Context7) + `supertest`; script `npm test`; mock lớp `config/supabase.js` và Gemini (`geminiImageService`) (Q21: không chạm DB thật, không gọi API Gemini thật trong test tự động) **Xong 2026-11-17:** Vitest 5.1.0 + supertest 7.3.2; `backend/vitest.config.js` (env giả, stub nhanh), `test/setup.js` chặn `fetch`; `npm test`, `npm run test:watch`
+- [x] Backend test: validators (auth, profile, category, product), `utils/image.js` (magic bytes, kích thước PNG/JPEG), `requireAuth`/`requireAdmin` (401/403), envelope lỗi, limiter, multer map lỗi (413/415/400), try-on (khoá cache, hạn mức, chuyển trạng thái, stub success/fail/slow, 404 user khác) **Xong:** 286 test / 19 file (validators, image magic bytes + kích thước + WebP, requireAuth/requireAdmin role từ DB, errorHandler + Retry-After, limiter login chỉ tính 401 / register / avatar / try-on, multer 413/400/415, HTTP auth/profile/avatar/admin danh mục + sản phẩm/API người mua, try-on: khoá cache, hạn mức ngày giờ VN, chuyển trạng thái, stub success/fail/slow, ánh xạ lỗi Gemini bằng mock, 404 user khác, 2 POST song song -> 1 row, dọn kết quả khi thay/xoá ảnh toàn thân và thay ảnh/xoá sản phẩm, restart giữa chừng -> GENERATION_TIMEOUT)
+- [x] Frontend: Vitest 5.1.0 + jsdom + Testing Library (`frontend/test/`); script `npm test`, `npm run test:watch`; test `safeRedirect`, `avatarCheck`/`productImageCheck`, `format`, `authValidation`, `profileValidation`, `apiClient` (401 chỉ khi đã gửi token), guards (`RequireAuth`, `GuestOnly`, `RequireAdmin`), `AuthProvider` (khôi phục phiên, đăng xuất, đăng nhập): 82 test. **Chưa làm:** hook polling try-on (fake timers) vì `useTryOnRoom` còn đang dùng mock (đợi Task 4)
+- [ ] Frontend: test hook polling/tải try-on với fake timers (làm sau khi Task 4 nối API thật vào `features/tryOn`)
+- [x] Cập nhật mục **Commands** trong `CLAUDE.md` và README
 
 **Acceptance Criteria:** `npm test` chạy được ở cả `backend/` và `frontend/`, pass, không cần mạng/DB thật; có test cho các luồng chính Sprint 1–3 liệt kê trên; lint sạch.
 

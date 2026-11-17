@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
+import { PATHS } from '../../routes/paths.js';
 import { checkAvatarFile } from '../../utils/avatarCheck.js';
 import {
   FIELD_ORDER,
@@ -70,7 +72,9 @@ export default function ProfileForm({
   const busy = saving || Boolean(avatarBusy);
   const hasPendingImage = Boolean(pending?.accepted);
   const dirty = isFormDirty(values, profile) || hasPendingImage;
-  const needsMeasurements = profile.heightCm == null || profile.weightKg == null;
+  // Hồ sơ đủ để thử đồ: ảnh toàn thân + chiều cao + cân nặng (Q13).
+  const readyForTryOn =
+    Boolean(profile.avatarUrl) && profile.heightCm != null && profile.weightKg != null;
 
   function handleChange(event) {
     const { name, value } = event.target;
@@ -199,7 +203,20 @@ export default function ProfileForm({
 
   return (
     <>
-      {needsMeasurements && (
+      {readyForTryOn ? (
+        <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-line bg-surface px-4 py-3 text-sm text-ink sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-semibold">Hồ sơ đã sẵn sàng để thử đồ</p>
+            <p className="mt-0.5 text-ink-soft">Chọn một danh mục và xem chính bạn mặc sản phẩm.</p>
+          </div>
+          <Link
+            to={PATHS.tryOn}
+            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-white transition-colors hover:bg-accent-dark"
+          >
+            Vào phòng thử đồ
+          </Link>
+        </div>
+      ) : (
         <div
           role="status"
           className="mb-6 rounded-2xl border border-accent/30 bg-blush/60 px-4 py-3 text-sm text-ink"
