@@ -4,6 +4,11 @@ import { HttpError } from '../middlewares/httpError.js';
 import { MESSAGES, validationError } from '../validators/productValidator.js';
 import { getBuyerCategory } from './categoryService.js';
 import { removeObject, signUrl, signUrls, uploadObject } from './storageService.js';
+import {
+  deleteTryOnResultsOfProduct,
+  listTryOnResultPathsOfProduct,
+  removeTryOnResultObjects,
+} from './tryOn/cleanup.js';
 
 export const PRODUCT_BUCKET = 'products';
 
@@ -161,12 +166,18 @@ export async function updateProduct(id, { name, price, categoryId }, oldPath, fi
     throw err;
   }
 
-  if (newPath && oldPath && oldPath !== newPath) await removeObject(PRODUCT_BUCKET, oldPath);
+  if (newPath && oldPath && oldPath !== newPath) {
+    await removeObject(PRODUCT_BUCKET, oldPath);
+    // Ảnh sản phẩm đổi: kết quả thử đồ cũ không còn đúng, dọn rows + object (best-effort).
+    await deleteTryOnResultsOfProduct(id);
+  }
   return toAdminProduct(row, await signUrl(PRODUCT_BUCKET, row.image_path));
 }
 
 /** DELETE sản phẩm: xoá row trước (RETURNING image_path), object sau (best-effort). */
 export async function deleteProduct(id) {
+  // FK CASCADE xoá rows try_on_results cùng sản phẩm, nên lấy result_path TRƯỚC khi xoá.
+  const resultPaths = await listTryOnResultPathsOfProduct(id);
   const { data, error } = await supabase
     .from('products')
     .delete()
@@ -176,4 +187,5 @@ export async function deleteProduct(id) {
   if (error) throw dbError('delete products', error);
   if (!data) throw notFound();
   await removeObject(PRODUCT_BUCKET, data.image_path);
+  await removeTryOnResultObjects(resultPaths);
 }

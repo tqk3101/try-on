@@ -14,6 +14,7 @@ export default function ConfirmDialog({
   busy = false,
   busyLabel = 'Đang xoá…',
   confirmTone = 'danger',
+  error = '',
   onConfirm,
   onCancel,
 }) {
@@ -55,6 +56,14 @@ export default function ConfirmDialog({
         <p id={descId} className="mt-3 text-sm text-ink-soft">
           {description}
         </p>
+        {error && (
+          <p
+            role="alert"
+            className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
+            {error}
+          </p>
+        )}
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button
             type="button"

@@ -1,6 +1,7 @@
 import { HttpError } from '../middlewares/httpError.js';
 import { detectImageType } from '../utils/image.js';
 import { removeObject, uploadObject } from './storageService.js';
+import { deleteTryOnResultsOfProfile } from './tryOn/cleanup.js';
 import { AVATAR_BUCKET, getAvatarPath, getProfile, setAvatarPath } from './userService.js';
 
 /**
@@ -27,6 +28,8 @@ export async function replaceAvatar(userId, file) {
   }
 
   if (oldPath && oldPath !== newPath) await removeObject(AVATAR_BUCKET, oldPath);
+  // Ảnh thử đồ cũ chứa hình người dùng cũ: dọn rows + object (best-effort).
+  await deleteTryOnResultsOfProfile(userId);
   return profile;
 }
 
@@ -40,5 +43,6 @@ export async function removeAvatar(userId) {
 
   const profile = await setAvatarPath(userId, null);
   await removeObject(AVATAR_BUCKET, oldPath);
+  await deleteTryOnResultsOfProfile(userId);
   return profile;
 }

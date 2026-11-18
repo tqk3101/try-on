@@ -11,8 +11,12 @@ SQL migration + seed cho Supabase, đánh số thứ tự. Thiết kế chi ti�
 | `005_grant_profiles_service_role.sql` | `GRANT` quyền bảng `profiles` cho `service_role` (sửa lỗi `42501 permission denied` khi backend truy cập) | Mọi môi trường. Đã áp lên Supabase 2026-11-03 (cần cho API đăng ký) |
 | `006_create_categories_products.sql` | Bảng `categories` (tên unique theo `lower(name)`, `slug`), `products` (FK `ON DELETE RESTRICT`, giá integer VND > 0, `image_path`), trigger `updated_at`, RLS bật, REVOKE anon/authenticated, GRANT `service_role`; seed 3 danh mục (Áo thun, Váy, Quần Jeans) | Mọi môi trường (seed danh mục là dữ liệu nền). Đã áp lên Supabase 2026-11-03 |
 | `007_create_products_bucket.sql` | Bucket private `products` (5MB, jpeg/png) cho ảnh flat lay | Mọi môi trường. Đã áp lên Supabase 2026-11-03 |
+| `008_create_try_on_results.sql` | Cột `profiles.try_on_consent_at`; bảng `try_on_results` (cache + job thử đồ, FK `ON DELETE CASCADE` tới `profiles`/`products`, unique index một phần cho kết quả `succeeded` và job đang chạy, index hạn mức), trigger `updated_at`, RLS bật, REVOKE anon/authenticated, GRANT `service_role` | Mọi môi trường. **Đã áp 2026-11-17** (Sprint 3 Task 1, viết 2026-11-17; Q12 đã chốt – provider `stub`/`gemini`, chỉ sửa comment; chờ chốt Q13–Q22) |
+| `009_create_try_on_results_bucket.sql` | Bucket private `try-on-results` (10MB, jpeg/png/webp) cho ảnh kết quả thử đồ | Mọi môi trường. **Đã áp qua MCP 2026-11-17** (sau `008`) |
 
 ## Trạng thái áp dụng
+
+`008` và `009` (Sprint 3 – Task 1) **đã áp qua Supabase MCP ngày 2026-11-17** (đã verify: GRANT chỉ `service_role`, RLS bật, 2 unique index một phần + 2 index thường, cột `profiles.try_on_consent_at`, bucket `try-on-results` private 10MB jpeg/png/webp). Không sửa file đã áp; thay đổi schema bằng migration mới.
 
 `006` và `007` (Sprint 2 – Task 1) đã áp lên Supabase qua MCP ngày 2026-11-03 (version `20261103120559`, `20261103120611`). Đã verify: `service_role` có quyền trên `categories`/`products`, `anon`/`authenticated` không có; RLS bật, 0 policy; 3 dòng seed danh mục; FK `ON DELETE RESTRICT`; bucket `products` private 5MB jpeg/png; kiểm thử ràng buộc trong transaction rollback (trùng tên khác hoa thường → `23505`, giá 0 → `23514`, `image_path` sai chủ → `23514`, xoá danh mục còn sản phẩm → `23503`).
 
@@ -21,7 +25,7 @@ SQL migration + seed cho Supabase, đánh số thứ tự. Thiết kế chi ti�
 ## Cách áp dụng (Supabase SQL Editor)
 
 1. Mở Supabase Dashboard → project → **SQL Editor** → New query.
-2. Dán và chạy lần lượt **theo thứ tự số**: `001` → `002` → `003` → … → `007` (bỏ `003` trên production).
+2. Dán và chạy lần lượt **theo thứ tự số**: `001` → `002` → `003` → … → `009` (bỏ `003` trên production).
 3. Mỗi file idempotent: chạy lại không lỗi, không xoá dữ liệu.
 4. Kiểm tra:
    ```sql

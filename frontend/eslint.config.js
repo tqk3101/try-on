@@ -25,6 +25,11 @@ export default defineConfig([
     },
   },
   {
+    // File test chạy trong Node + jsdom (Vitest được import tường minh, không dùng global).
+    files: ['test/**/*.{js,jsx}', 'src/**/*.test.{js,jsx}'],
+    languageOptions: { globals: { ...globals.browser, ...globals.node } },
+  },
+  {
     files: ['eslint.config.js', 'vite.config.js'],
     languageOptions: { globals: globals.node },
   },

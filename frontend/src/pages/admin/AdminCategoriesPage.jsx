@@ -5,7 +5,7 @@ import CategoryList from '../../components/admin/CategoryList.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
 import { FolderIcon, PlusIcon } from '../../components/icons.jsx';
-import ConfirmDialog from '../../components/profile/ConfirmDialog.jsx';
+import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import { useToast } from '../../components/toastContext.js';
 import { PATHS } from '../../routes/paths.js';
 import { deleteAdminCategory, fetchAdminCategories } from '../../services/adminApi.js';

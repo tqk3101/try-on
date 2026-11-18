@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router';
+import { PATHS } from '../../routes/paths.js';
 import Logo from '../Logo.jsx';
 import AccountMenu from '../AccountMenu.jsx';
 import AuthLink from '../AuthLink.jsx';
@@ -39,7 +41,12 @@ export default function LandingHeader({ user = null, onLogout }) {
 
         <div className="hidden items-center gap-2 md:flex">
           {user ? (
-            <AccountMenu user={user} onLogout={onLogout} />
+            <>
+              <Link to={PATHS.tryOn} className={linkClass}>
+                Phòng thử đồ
+              </Link>
+              <AccountMenu user={user} onLogout={onLogout} />
+            </>
           ) : (
             <>
               <AuthLink to="login" variant="outline" compact>

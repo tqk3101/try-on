@@ -4,7 +4,7 @@ import ProductList from '../../components/admin/ProductList.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
 import { FolderIcon, ImageIcon, PlusIcon } from '../../components/icons.jsx';
-import ConfirmDialog from '../../components/profile/ConfirmDialog.jsx';
+import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import SelectField from '../../components/SelectField.jsx';
 import { useToast } from '../../components/toastContext.js';
 import { adminProductEditPath, PATHS, withCategoryFilter } from '../../routes/paths.js';

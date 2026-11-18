@@ -10,6 +10,8 @@ import AdminProductsPage from '../pages/admin/AdminProductsPage.jsx';
 import NotFoundPage from '../pages/NotFoundPage.jsx';
 import ProfilePage from '../pages/ProfilePage.jsx';
 import RegisterPage from '../pages/RegisterPage.jsx';
+import TryOnCategoriesPage from '../pages/TryOnCategoriesPage.jsx';
+import TryOnRoomPage from '../pages/TryOnRoomPage.jsx';
 import AppRoot from './AppRoot.jsx';
 import { GuestOnly, RequireAdmin, RequireAuth } from './guards.jsx';
 import { PATHS } from './paths.js';
@@ -40,6 +42,8 @@ const router = createBrowserRouter([
             Component: RequireAuth,
             children: [
               { path: PATHS.profile, Component: ProfilePage },
+              { path: PATHS.tryOn, Component: TryOnCategoriesPage },
+              { path: PATHS.tryOnRoom, Component: TryOnRoomPage },
               {
                 Component: RequireAdmin,
                 children: [

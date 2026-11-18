@@ -45,7 +45,7 @@ Public.
 
 ### Ghi chú
 - **Đăng ký và Đăng nhập:** `/register` (Task 5) và `/login` (Task 6) đã có thiết kế. `AuthLink` đọc `AUTH_ROUTES_READY` trong `frontend/src/routes/paths.js` (cả hai đã `true`, nút "Đăng nhập" là link thật; trang nào chưa có route thì hiển thị nút `aria-disabled` "Sắp ra mắt"). `LandingPage` lấy `user`/`logout` từ `useAuth()`.
-- **Header khi đã đăng nhập:** `LandingHeader` nhận `user`/`onLogout`; có `user` thì thay hai nút Đăng nhập/Đăng ký bằng `AccountMenu` (xem mục "Nút Đăng xuất ở header" bên dưới). CTA hero đổi thành "Thử ngay" cho user đã đăng nhập: để sprint sau.
+- **Header khi đã đăng nhập:** `LandingHeader` nhận `user`/`onLogout`; có `user` thì thay hai nút Đăng nhập/Đăng ký bằng `AccountMenu` (xem mục "Nút Đăng xuất ở header" bên dưới). Khi đã đăng nhập (Sprint 3 Task 2): CTA hero và nút của CTA band đổi thành "Thử ngay" (link `/try-on`), header desktop có thêm link "Phòng thử đồ" cạnh `AccountMenu`; thẻ danh mục (mock, không dùng id thật) là link tới trang chọn danh mục `/try-on` cho cả khách lẫn user (khách bị `RequireAuth` đưa về `/login?redirect=%2Ftry-on`); mỗi thẻ có `aria-label` "<tên>: vào phòng thử đồ", hover nâng nhẹ, focus-visible outline accent (Sprint 3 Task 7).
 - Trang 404 (`*`) dùng `MainLayout` (header tối giản); landing tự có header/footer.
 - Nội dung là mock tĩnh; không gọi API. Badge health cũ của placeholder đã bỏ khỏi UI (giữ `services/healthApi.js`).
 - Hình minh hoạ không dùng ảnh ngoài; khi có ảnh thật sẽ thay trong `HeroVisual` (giữ tỉ lệ 3:4, thêm `alt`).
@@ -61,7 +61,7 @@ Code: `frontend/src/pages/RegisterPage.jsx`, khung `components/AuthLayout.jsx`, 
 Khách tạo tài khoản bằng email + mật khẩu. Thành công **không** tự đăng nhập: chuyển `/login` kèm thông báo và email điền sẵn (README flows D3).
 
 ### Quyền truy cập
-Chỉ khách (guest-only). Người đã đăng nhập bị `GuestOnly` chuyển sang `/profile` (Task 6, do agent-coder nối cùng AuthProvider).
+Chỉ khách (guest-only). Người đã đăng nhập bị `GuestOnly` chuyển sang `/try-on` (Q19; Task 6, do agent-coder nối cùng AuthProvider).
 
 ### Các thành phần chính
 1. **Khung `AuthLayout`**: nền canvas, header chỉ có logo, thẻ trắng `rounded-3xl shadow-card` rộng tối đa `max-w-md` ở giữa; skip link tới `#main`.
@@ -94,10 +94,10 @@ Một cột ở mọi cỡ: thẻ `w-full max-w-md`, padding `p-6` (mobile) / `p
 Code: `frontend/src/pages/LoginPage.jsx`, khung `AuthLayout`, `TextField`, validate `validateLoginForm` (`utils/authValidation.js`), API `loginAccount` (`services/authApi.js`), phiên qua `useAuth().login`. Flow: `design/flows/login.md`.
 
 ### Mục đích
-Khách đăng nhập bằng email + mật khẩu; thành công chuyển tới `redirect` hợp lệ hoặc `/profile`.
+Khách đăng nhập bằng email + mật khẩu; thành công chuyển tới `redirect` hợp lệ hoặc `/try-on` (Q19).
 
 ### Quyền truy cập
-Chỉ khách (`GuestOnly`): người đã đăng nhập được chuyển tới `safeRedirect(redirect)` hoặc `/profile`.
+Chỉ khách (`GuestOnly`): người đã đăng nhập được chuyển tới `safeRedirect(redirect)` hoặc `/try-on`.
 
 ### Các thành phần chính
 1. **Khung `AuthLayout`** giống `/register` (thẻ `max-w-md`, skip link, header chỉ có logo).
@@ -116,14 +116,14 @@ Chỉ khách (`GuestOnly`): người đã đăng nhập được chuyển tới 
 - `INVALID_CREDENTIALS` (401): khung đỏ nhạt `role="alert"` trên form "Email hoặc mật khẩu không đúng."; **xoá ô mật khẩu, giữ email, focus lại ô mật khẩu**. Không chỉ ra email hay mật khẩu sai.
 - `VALIDATION_ERROR`: map `error.fields` vào từng ô.
 - Lỗi chung (429, 500, mạng): khung đỏ nhạt `role="alert"` với `error.message`; dữ liệu giữ nguyên, nút bật lại.
-- Thành công: `navigate(safeRedirect(redirect) ?? '/profile', { replace: true })`.
+- Thành công: `navigate(safeRedirect(redirect) ?? '/try-on', { replace: true })`.
 
 ### Responsive
 Một cột ở mọi cỡ như `/register`: `w-full max-w-md`, padding `p-6` (mobile) / `p-8` (từ `sm`); vùng chạm >= 44px (ô và nút `min-h-12`).
 
 ### Navigation
 - Đến từ: Landing (nút Đăng nhập), `/register` (sau khi đăng ký thành công), `RequireAuth` (`?redirect=<path>`, thêm `&reason=expired` khi token hết hạn).
-- Đi tới: `/profile` hoặc `redirect`; `/register`.
+- Đi tới: `redirect` hoặc `/try-on` (mặc định); `/register`.
 
 ### Ghi chú
 - Đã nối thật: `LoginPage` gọi `useAuth().login()` (`auth/AuthProvider.jsx`), mock đã xoá. Điều hướng sau đăng nhập do `GuestOnly` làm (một nơi duy nhất). 401 `INVALID_CREDENTIALS` hiện thông báo chung; request đăng nhập/đăng ký không gửi token cũ nên không kích hoạt luồng hết hạn.
@@ -133,7 +133,7 @@ Một cột ở mọi cỡ như `/register`: `w-full max-w-md`, padding `p-6` (m
 
 ## Hồ sơ — `/profile`
 
-Code: `frontend/src/pages/ProfilePage.jsx` (trong `RequireAuth` + `MainLayout`), component ở `components/profile/` (`ProfileForm`, `AvatarField`, `ConfirmDialog`), trạng thái/hành động ở `features/profile/useProfile.js`, dữ liệu qua `features/profile/profileApi.js` (nối API thật qua `services/userApi.js`). Validate: `utils/profileValidation.js`, `utils/avatarCheck.js`. Flow: `design/flows/profile.md`, `avatar-upload.md`.
+Code: `frontend/src/pages/ProfilePage.jsx` (trong `RequireAuth` + `MainLayout`), component ở `components/profile/` (`ProfileForm`, `AvatarField`) và `ConfirmDialog` dùng chung ở `components/ConfirmDialog.jsx`, trạng thái/hành động ở `features/profile/useProfile.js`, dữ liệu qua `features/profile/profileApi.js` (nối API thật qua `services/userApi.js`). Validate: `utils/profileValidation.js`, `utils/avatarCheck.js`. Flow: `design/flows/profile.md`, `avatar-upload.md`.
 
 ### Mục đích
 Xem và cập nhật hồ sơ (tên hiển thị, số điện thoại tuỳ chọn, chiều cao, cân nặng) và ảnh toàn thân dùng cho phòng thử đồ.
@@ -145,7 +145,7 @@ Xem và cập nhật hồ sơ (tên hiển thị, số điện thoại tuỳ ch�
 1. **Tiêu đề** "Hồ sơ của tôi" + câu mô tả ngắn.
 2. **Skeleton khi tải**: khung ảnh 3:4 + 4 ô nhập + nút (animate-pulse; `role="status"`, chữ ẩn "Đang tải hồ sơ…").
 3. **Khối lỗi tải** (lỗi mạng/5xx): thẻ `role="alert"` "Không tải được hồ sơ" + message + nút **Thử lại** (gọi lại GET). Không hiện form rỗng.
-4. **Banner** "Hoàn thiện hồ sơ để bắt đầu thử đồ" (`role="status"`, nền blush) khi chưa có chiều cao hoặc cân nặng; biến mất sau khi lưu đủ số đo.
+4. **Banner** "Hoàn thiện hồ sơ để bắt đầu thử đồ" (`role="status"`, nền blush) khi hồ sơ chưa đủ để thử đồ (thiếu ảnh toàn thân, chiều cao hoặc cân nặng – Q13). Khi hồ sơ đủ, banner được thay bằng khối "Hồ sơ đã sẵn sàng để thử đồ" kèm nút/link **"Vào phòng thử đồ"** -> `/try-on` (Sprint 3 Task 2).
 5. **Khối ảnh toàn thân** (`AvatarField`): khung `aspect-[3/4]` `object-contain` (không méo/cắt), placeholder (icon người + "Chưa có ảnh toàn thân") khi chưa có ảnh hoặc ảnh lỗi; lớp phủ spinner "Đang tải ảnh lên…/Đang xoá ảnh…" khi bận. Nút:
    - **Chọn ảnh / Thay ảnh** (input file `accept="image/jpeg,image/png"`, trên mobile hệ điều hành cho chọn chụp trực tiếp).
    - **Xoá ảnh** (chỉ khi có ảnh đã lưu và chưa chọn ảnh mới) → hộp thoại xác nhận → `DELETE` ngay, độc lập nút Lưu.
@@ -167,8 +167,8 @@ Xem và cập nhật hồ sơ (tên hiển thị, số điện thoại tuỳ ch�
 - Desktop (> 1024px): cột ảnh 18rem, khoảng cách lớn hơn; container `max-w-5xl` của `MainLayout`.
 
 ### Navigation
-- Đến từ: `/login` (sau đăng nhập), `AccountMenu` (Hồ sơ của tôi), `RequireAuth`.
-- Đi tới: Đăng xuất và các mục khác qua header (`AccountMenu`). Trang không có nút Đăng xuất riêng.
+- Đến từ: `AccountMenu` (Hồ sơ của tôi), `RequireAuth`; `/login` chỉ khi `?redirect=/profile` (đích mặc định sau đăng nhập là `/try-on`, Q19).
+- Đi tới: `/try-on` (link "Vào phòng thử đồ" khi hồ sơ đủ); Đăng xuất và các mục khác qua header (`AccountMenu`). Trang không có nút Đăng xuất riêng. Đến từ thêm: màn "Hoàn thiện hồ sơ để thử đồ" ở phòng thử đồ.
 
 ### Ghi chú
 - Đã nối API thật (Task 7): `profileApi.js` re-export `fetchProfile/updateProfile/uploadAvatar/deleteAvatar` từ `services/userApi.js`, mỗi hàm trả `{ profile }`; không còn mock.
@@ -185,7 +185,7 @@ Code: `frontend/src/components/AccountMenu.jsx`; gắn vào `MainLayout` và `co
 - **Desktop/tablet (từ 768px):** ở góc phải header, nút pill viền gồm avatar chữ cái đầu (nền accent) + tên (hoặc email, rút gọn). Bấm mở panel dropdown (pattern disclosure: `aria-expanded`, `aria-controls`): dòng email, link "Hồ sơ của tôi" (`/profile`), nút "Đăng xuất" (màu accent-dark). Đóng bằng Esc (trả focus về nút), bấm ra ngoài hoặc chọn mục.
 - **Mobile (< 768px):** ở `LandingHeader`, khối `AccountMenu inline` nằm trong menu hamburger thay cho hai nút auth: "Đăng nhập với {email}", Hồ sơ của tôi, Đăng xuất (hàng cao >= 44px); bấm mục nào cũng đóng menu. Ở `MainLayout` (header chỉ logo) nút pill luôn hiện bên phải.
 - Landing khi đã đăng nhập: không hiện Đăng nhập/Đăng ký.
-- Props: `user` ({ email, displayName }), `onLogout`, `inline`, `onNavigate`. Đã nối `useAuth()` ở `MainLayout` và `LandingPage`. Tên hiển thị sau khi lưu hồ sơ chưa tự cập nhật (TODO ở `ProfileForm.jsx`).
+- Props: `user` ({ email, displayName }), `onLogout`, `inline`, `onNavigate`. Đã nối `useAuth()` ở `MainLayout` và `LandingPage`. Menu có thêm mục **"Phòng thử đồ"** (`/try-on`, đứng đầu, hiện ở cả dropdown desktop và dạng inline mobile); `MainLayout` còn có link "Phòng thử đồ" (NavLink, `accent` khi đang ở `/try-on*`) cạnh `AccountMenu` từ 640px (dưới 640px chỉ còn trong menu để header không chật ở 375px).
 
 ---
 
@@ -426,3 +426,160 @@ Căn giữa, `py-16`, một cột ở mọi cỡ; hai nút xếp dọc full widt
 ### Ghi chú
 - Không render menu admin hay dữ liệu nào từ API. 403 do hạ quyền giữa phiên: gọi lại `GET /api/user/profile` để cập nhật `role` trong AuthContext (link "Quản trị" biến khỏi `AccountMenu`).
 - Focus: `h1` có `tabIndex={-1}` nhận focus khi trang hiện, để trình đọc màn hình đọc ngay. `document.title` "Không có quyền truy cập — Try-on".
+
+---
+
+# Phòng thử đồ (Sprint 3 — US-05, US-06)
+
+Bám `design/flows/try-on-room.md` (mục 4–5, 9), `design/flows/README.md` (contract, mã lỗi, route, D24–D31, Q11–Q22), `sprints/US-05.md`, `sprints/US-06.md`. Route: `/try-on` và `/try-on/:categoryId?product=<productId>` (README mục 5), cả hai nằm trong `RequireAuth` + `MainLayout`; guest bị chuyển `/login?redirect=<path>`. Mọi người dùng đã đăng nhập (kể cả admin) dùng được.
+
+Code: `pages/TryOnCategoriesPage.jsx`, `pages/TryOnRoomPage.jsx`; component `components/tryOn/` (`TryOnStage`, `ProductPanel`, `ProfileGate`, `ConsentDialog`); logic `features/tryOn/` (`useTryOnAccess`, `useCategories`, `useTryOnRoom`, `useSwipe`, điểm nối dữ liệu `tryOnApi.js`, xem "Nối API thật" cuối mục).
+
+**Quy ước chung của phòng thử đồ**
+- **Câu chữ trạng thái chờ chuẩn hoá (duy nhất):** `Đang thử đồ {tên sản phẩm}…` (có dấu "…"). Dùng cho chữ hiển thị trong khung ảnh và cho thông báo `aria-live`. Các câu cũ "Đang tạo ảnh bạn mặc {tên}…" ở `try-on-room.md` mục 9 (sơ đồ) và `US-05.md` luồng chính bước 4 thay bằng câu này.
+- Giá luôn dạng `199.000 ₫` (`formatVnd`); vị trí `n/N` (vd. `2/6`).
+- Không có nút "Thêm vào giỏ" (Q20; US-07 ở Sprint 4: chỉ chừa chỗ trong `ProductPanel`, có comment) và không có nút xoá toàn bộ ảnh thử đồ (Q22).
+- Không prefetch (Q15): chỉ gửi `POST /api/try-on` cho sản phẩm user dừng lại >= 400 ms (debounce); chỉ poll sản phẩm đang hiển thị.
+- `document.title`: `/try-on` = "Phòng thử đồ — Try-on"; `/try-on/:categoryId` = "Thử đồ: {tên danh mục} — Try-on" (khi chưa tải xong danh mục: "Phòng thử đồ — Try-on").
+- Hạn mức hiển thị "Còn {n} lượt hôm nay" (từ `quota.remaining`, cập nhật theo mỗi response POST và `GET /api/try-on/quota`); `remaining = 0` hiện "Đã hết lượt hôm nay".
+
+---
+
+## Chọn danh mục — `/try-on`
+
+### Mục đích
+Người mua chọn danh mục để vào phòng thử đồ. Là lối vào chính từ header / `AccountMenu` / landing / `/profile`.
+
+### Quyền truy cập
+Đã đăng nhập (`RequireAuth`).
+
+### Các thành phần chính
+1. **Tiêu đề**: eyebrow "Phòng thử đồ", `h1` "Bạn muốn thử gì hôm nay?" (Playfair), mô tả "Chọn một danh mục để xem chính bạn mặc từng sản phẩm."
+2. **Điều kiện hồ sơ** (làm trước khi tải danh mục, `useTryOnAccess`): tải hồ sơ (skeleton `role="status"` "Đang tải hồ sơ…"; lỗi -> `ErrorState` "Không tải được hồ sơ" + Thử lại); hồ sơ thiếu ảnh toàn thân / chiều cao / cân nặng -> màn "Hoàn thiện hồ sơ để thử đồ" (xem mục riêng bên dưới) thay cho danh sách.
+3. **Lưới thẻ danh mục** (`CategoryGrid`): mỗi danh mục là một `<Link>` tới `/try-on/:categoryId` (`rounded-3xl`, nền gradient `blush -> sand`, chữ cái đầu lớn mờ trang trí `aria-hidden`, tên danh mục Playfair, nút tròn mũi tên). Tên truy cập của link = tên danh mục.
+   - Tương tác: click / Enter. Trạng thái: default / hover (nhích lên 4px, nút mũi tên chuyển `accent`) / focus-visible (outline global). Vùng chạm cả thẻ (>= 144px cao).
+   - Chỉ có danh mục có >= 1 sản phẩm (Q8, server lọc).
+4. **Skeleton** khi tải danh mục: 3 khối `animate-pulse`, `role="status"` chữ ẩn "Đang tải danh mục…".
+5. **Lỗi tải** (500/mạng): `ErrorState` "Không tải được danh mục" + `error.message` + **Thử lại**.
+6. **Rỗng** (`categories = []`): `EmptyState` "Chưa có sản phẩm để thử", "Cửa hàng chưa thêm sản phẩm nào. Vui lòng quay lại sau." (không có nút hành động).
+
+### Responsive
+- Mobile (< 640px): 1 cột. Tablet (640–1024px): 2 cột. Desktop (>= 1024px): 3 cột; trong container `max-w-5xl` của `MainLayout`. 375px không cuộn ngang.
+
+### Navigation
+- Đến từ: link "Phòng thử đồ" ở `MainLayout` (từ 640px), `AccountMenu`, `LandingHeader`, CTA "Thử ngay" ở landing, link "Vào phòng thử đồ" ở `/profile`, "Chọn danh mục khác" ở phòng thử đồ, hộp thoại đồng ý ("Để sau"). Từ Sprint 3 Task 4: đích mặc định sau đăng nhập (Q19).
+- Đi tới: `/try-on/:categoryId`; `/profile` (qua màn Hoàn thiện hồ sơ).
+
+---
+
+## Hoàn thiện hồ sơ để thử đồ — hiển thị tại `/try-on` và `/try-on/:categoryId`
+
+Không phải route riêng: `ProfileGate` thay nội dung trang khi hồ sơ thiếu mục (Q13: bắt buộc cả ba).
+
+### Các thành phần chính
+1. Thẻ trắng `rounded-3xl shadow-card` căn giữa `max-w-lg`: `h1` "Hoàn thiện hồ sơ để thử đồ", mô tả "Phòng thử đồ cần ảnh toàn thân cùng chiều cao, cân nặng của bạn để dựng ảnh bạn mặc sản phẩm."
+2. Danh sách luôn đủ 3 mục **Ảnh toàn thân / Chiều cao / Cân nặng**; mỗi mục có vòng tròn (dấu tích `accent` khi đã có; viền nét đứt khi thiếu) **kèm chữ** "Đã có" / "Còn thiếu" (không chỉ dựa vào màu/icon).
+3. Nút **"Cập nhật hồ sơ"** (primary, `min-h-12`) -> `/profile` (không thêm `?redirect`; khi hồ sơ đủ, `/profile` hiện link "Vào phòng thử đồ").
+- Nguồn thiếu: client (profile: `avatarUrl`, `heightCm`, `weightKg` null) **hoặc** server (409 `PROFILE_INCOMPLETE`, `error.fields` có `avatar`/`heightCm`/`weightKg` -> unmount phòng thử đồ và hiện màn này).
+
+### Responsive / a11y
+- Một cột ở mọi cỡ; nút full width trên mobile, tự co từ `sm`. Heading là `h1`.
+
+---
+
+## Hộp thoại đồng ý xử lý ảnh — hiển thị tại `/try-on/:categoryId`
+
+Hiện **một lần** khi `profile.tryOnConsentAt = null` (Q14), trước khi tải sản phẩm (hộp thoại nằm trên skeleton phòng thử đồ). Dùng lại `ConfirmDialog` (`<dialog>` + `showModal`: focus trap, Esc, trả focus) với thêm prop tuỳ chọn `error`.
+
+- Tiêu đề "Cho phép xử lý ảnh của bạn?"; nội dung: "Để tạo ảnh thử đồ, ảnh toàn thân của bạn và ảnh sản phẩm được gửi tới dịch vụ AI của Google (Gemini API). Ảnh kết quả chỉ mình bạn xem được, và bạn có thể xoá ảnh toàn thân trong Hồ sơ bất cứ lúc nào."
+- Nút **"Đồng ý"** (primary, `confirmTone="primary"`) -> `POST /api/try-on/consent` -> cập nhật profile -> vào phòng thử đồ. Đang gửi: nút khoá, nhãn "Đang lưu…", Esc/bấm nền bị chặn.
+- Nút **"Để sau"** (focus ban đầu; Esc và bấm nền cũng = Để sau) -> về `/try-on` (replace).
+- Lỗi (500/mạng/429): khung `role="alert"` đỏ nhạt trong hộp thoại với `error.message`, hộp thoại giữ nguyên, bấm "Đồng ý" lại được.
+- Server 409 `TRY_ON_CONSENT_REQUIRED` khi POST thử đồ (client tưởng đã đồng ý) -> hiện lại hộp thoại; Đồng ý xong phòng thử đồ nạp lại.
+- Responsive: `w-[calc(100%-2rem)] max-w-sm`; nút xếp dọc trên mobile ("Đồng ý" trên, "Để sau" dưới), ngang từ `sm`.
+
+---
+
+## Phòng thử đồ — `/try-on/:categoryId?product=<productId>`
+
+### Mục đích
+Thấy ảnh chính mình mặc sản phẩm của danh mục; chuyển sản phẩm bằng mũi tên / vuốt / phím ←/→; xem tên, giá, vị trí. Vị trí được giữ ở `?product=` (cập nhật bằng `replace`, Back không đi qua từng sản phẩm; reload giữ đúng sản phẩm). `?product=` thiếu / không thuộc danh mục -> về sản phẩm đầu (replace, không báo lỗi). Thứ tự sản phẩm theo server (cũ nhất trước, D24).
+
+### Quyền truy cập
+Đã đăng nhập; hồ sơ đủ; đã đồng ý (xem hai mục trên).
+
+### Bố cục và thành phần chính
+Một `<section aria-label="Phòng thử đồ: {danh mục}">` có `onKeyDown` cho ←/→ và một vùng `aria-live="polite"` ẩn thị giác (`sr-only`).
+
+1. **Khung ảnh thử đồ** (`TryOnStage`): `role="group"` `tabIndex=0` `aria-label="Ảnh thử đồ. Dùng phím mũi tên trái hoặc phải để đổi sản phẩm."`; `aspect-[3/4]`, `max-w-md`, `rounded-[2rem]`, nền `sand`, `shadow-card`; ảnh `object-contain` (không méo, không cắt). `touch-action: pan-y` (class `touch-pan-y`) và `select-none`; ảnh `draggable={false}`.
+   - **Nhãn "Ảnh mô phỏng"** (pill `bg-ink/80` chữ trắng, góc trên trái) khi `tryOn.simulated = true` (provider `stub`). Provider thật: không nhãn.
+   - **Mũi tên trái/phải** (`size-11` = 44px, tròn, nền `surface/85` + blur, đặt trong khung ở hai mép, giữa theo chiều dọc): `aria-label` "Sản phẩm trước" / "Sản phẩm tiếp theo"; `disabled` ở đầu / cuối danh sách (mờ 40%, `cursor-not-allowed`); hover phóng 1.05. **Luôn bấm được trong lúc ảnh đang tạo** (không bao giờ khoá vì ảnh chưa xong).
+   - **Vuốt** (Pointer Events, `useSwipe`): vuốt trái = tiếp theo, vuốt phải = trước đó, cần |dx| >= 50 px và |dx| > |dy|; không `setPointerCapture` (để click mũi tên vẫn đúng); cuộn dọc khiến trình duyệt phát `pointercancel` nên không bị nhầm là vuốt.
+   - **Trạng thái trong khung ảnh** (suy ra từ cache client `entries[productId]`, xem `useTryOnRoom`):
+
+| Trạng thái | Hiển thị | Ghi chú |
+|------------|----------|---------|
+| Đang tạo (chưa có entry, đang chờ debounce 400 ms; hoặc `processing`; hoặc đang POST) | Ảnh toàn thân của user mờ (`blur-xl`, 60%) làm nền + thẻ flat lay sản phẩm (3:4, nổi) kèm vòng xoay; chữ **"Đang thử đồ {tên}…"** (Playfair), bộ đếm "{n} giây", dòng nhỏ "Có thể mất vài giây đến nửa phút. Bạn vẫn có thể xem sản phẩm khác trong lúc chờ." | Hiện **ngay** khi chuyển sang sản phẩm chưa có ảnh (< 100 ms đo được ~66 ms gồm cả thao tác click), không để khung trống. Bộ đếm tính từ lúc bắt đầu yêu cầu (khi chưa có entry: từ lúc khung hiện ra), **không** phải live region (`aria-hidden`) để trình đọc màn hình không đọc mỗi giây. Chưa có ảnh toàn thân: nền `animate-pulse` |
+| Thành công (`succeeded`) | Ảnh thử đồ, `alt="Bạn mặc {tên}"`, fade-in 400 ms (`opacity`) | `<img onError>` -> GET lại `/api/try-on/:id` **một lần** lấy signed URL mới; vẫn lỗi -> khối lỗi `IMAGE_LOAD_FAILED` (chỉ có ở client) + Thử lại |
+| Lỗi (`failed`, hoặc lỗi POST) | Khối `role="alert"` đỏ nhạt giữa khung (nền là flat lay mờ): icon cảnh báo, "Chưa có ảnh thử đồ", `error.message` nguyên văn, nút **"Thử lại"** (outline, `min-h-11`) | `INPUT_REJECTED` thêm link "Đổi ảnh toàn thân" -> `/profile`. Áp dụng cho `GENERATION_FAILED`, `GENERATION_TIMEOUT`, `INPUT_REJECTED`, `PROVIDER_UNAVAILABLE`, 503 `TRY_ON_UNAVAILABLE`, 429 `TOO_MANY_REQUESTS`, 500, `NETWORK_ERROR`, và client timeout 120 s (hiện message "Tạo ảnh mất quá nhiều thời gian…" như `GENERATION_TIMEOUT`). Thử lại = `POST /api/try-on` lại cho riêng sản phẩm đó |
+| Hết lượt (429 `TRY_ON_QUOTA_EXCEEDED`) | Khối `role="alert"`: "Đã hết lượt thử đồ hôm nay", "Lượt thử mới có lại từ 00:00 ngày mai (giờ Việt Nam). Bạn vẫn xem được các sản phẩm và ảnh đã tạo." (không có nút Thử lại) | `resetsAt` luôn là 00:00 giờ VN nên dùng chữ cố định; badge hạn mức đổi thành "Đã hết lượt hôm nay". Vẫn chuyển sản phẩm, xem flat lay và ảnh đã tạo (cache) |
+
+2. **Cột thông tin** (`ProductPanel`): link "← Chọn danh mục khác" (`/try-on`, `min-h-11`); eyebrow "Phòng thử đồ"; `h1` tên danh mục (Playfair); khối sản phẩm: ảnh **flat lay thu nhỏ** (`aspect-[3/4]`, `w-24`, `object-contain`, `alt="Ảnh trải phẳng {tên}"`), `n/N`, `h2` tên (tối đa vài dòng, `break-words`), giá "199.000 ₫" (`tabular-nums`), badge **"Còn n lượt hôm nay"** (`sand`) / "Đã hết lượt hôm nay" (`blush`, có chữ). Tên/giá/flat lay đổi tức thì khi chuyển sản phẩm (không chờ mạng).
+3. **Danh sách thu nhỏ** (`nav aria-label="Sản phẩm trong danh mục"`, ẩn khi chỉ có 1 sản phẩm): hàng các nút ảnh flat lay `w-14` (`min-h-11`), cuộn ngang **trong** thanh (không làm cuộn ngang trang), sản phẩm hiện tại viền `accent` + `aria-current="true"`; bấm -> chuyển tới sản phẩm đó (cùng debounce). `aria-label` "{tên}, sản phẩm i trên N".
+4. **Thẻ "Đã xem hết"** (chỉ ở sản phẩm cuối): "Bạn đã xem hết {danh mục}", "Đây là sản phẩm cuối cùng. Bấm mũi tên trái để xem lại, hoặc thử danh mục khác." + nút "Chọn danh mục khác" -> `/try-on`. Mũi tên phải `disabled`, vuốt trái không làm gì, **không quay vòng** (Q17); mũi tên trái vẫn dùng được.
+5. **Chỗ chừa cho nút "Thêm vào giỏ"** (US-07, Sprint 4): ngay dưới khối sản phẩm trong `ProductPanel` (chỉ là comment trong code; Sprint 3 không render gì).
+
+### Trạng thái cấp trang
+- **Đang tải danh sách sản phẩm** (và đang tải hồ sơ): skeleton khung 3:4 + cột thông tin, `role="status"` chữ ẩn "Đang tải phòng thử đồ…".
+- **Lỗi tải sản phẩm** (500/mạng): `ErrorState` "Không tải được sản phẩm" + Thử lại.
+- **Danh mục rỗng** (`products = []`, vào bằng URL): `EmptyState` "Danh mục này chưa có sản phẩm", "Hãy chọn danh mục khác để tiếp tục thử đồ." + nút "Chọn danh mục khác" -> `/try-on`.
+- **Danh mục không tồn tại** (404 `CATEGORY_NOT_FOUND`): toast lỗi "Danh mục không còn tồn tại." và `navigate('/try-on', { replace })`.
+- **Sản phẩm bị xoá giữa chừng** (404 `PRODUCT_NOT_FOUND` khi POST): bỏ entry, tải lại danh sách, giữ vị trí gần nhất hợp lệ (replace URL).
+- **Chuyển sản phẩm khi ảnh đang tạo**: không chặn; job vẫn chạy ở server; client dừng poll sản phẩm cũ (huỷ vòng poll), quay lại thì GET ngay rồi poll tiếp; kết quả poll về muộn chỉ cập nhật đúng `productId` của nó (entry theo `productId`).
+- **Debounce / không prefetch**: lướt nhanh qua nhiều sản phẩm (< 400 ms mỗi bước) không gửi POST cho sản phẩm chỉ lướt qua (đã kiểm tra: 3 lần bấm liên tiếp chỉ trừ 1 lượt).
+
+### Hiệu ứng
+- Ảnh kết quả fade-in (`animate-fade-in`, token mới trong `index.css`); đổi sản phẩm **không** trượt (không animation chuyển, đơn giản và đã thoả `prefers-reduced-motion`); vòng xoay `animate-spin`; thẻ danh mục hover nhích lên. Chỉ `transform`/`opacity`; `prefers-reduced-motion` tắt gần hết (cấu hình global).
+
+### Responsive
+- Mobile (< 640px, kiểm tra 375px): một cột; khung ảnh gần full chiều ngang (3:4), mũi tên nổi hai bên mép trong ảnh (nền mờ, không che thân), thông tin + danh sách thu nhỏ dưới ảnh. Không cuộn ngang trang.
+- Tablet (640–1024px, kiểm tra 768px): một cột, khung ảnh `max-w-md` căn giữa, thông tin dưới ảnh.
+- Desktop (>= 1024px, kiểm tra 1280px): hai cột `minmax(0,28rem) | 1fr` — ảnh trái, thông tin + flat lay + danh sách thu nhỏ phải; ảnh cao ~600px vừa màn hình 800px.
+
+### Accessibility
+- `aria-live="polite"` (một vùng duy nhất, `sr-only`): đọc "Sản phẩm {n} trên {N}: {tên}, {giá}." rồi nối trạng thái: "Đang thử đồ {tên}…" -> "Đã tạo xong ảnh." / `error.message` / "Đã hết lượt thử đồ hôm nay." Khối lỗi trong khung có thêm `role="alert"`.
+- Bàn phím: ←/→ đổi sản phẩm khi focus nằm trong vùng phòng thử đồ (khung ảnh `tabIndex=0`, mũi tên, thanh thu nhỏ; **không** bắt phím khi đang ở `input/textarea/select/contenteditable` hoặc có Ctrl/Alt/Meta/Shift). Tab: khung ảnh -> 2 mũi tên (nút disabled bị bỏ qua) -> link "Chọn danh mục khác" -> thanh thu nhỏ -> thẻ "Đã xem hết".
+- Focus khi mũi tên bị disabled: nếu nút "Sản phẩm tiếp theo" / "trước" đang giữ focus mà trở thành disabled (tới cuối / đầu danh sách) thì focus tự chuyển về khung ảnh (`tabIndex=0`) để ←/→ (bắt ở vùng phòng thử đồ) vẫn hoạt động; nút không giữ focus thì không bị cướp focus (`TryOnStage`, test `TryOnStageFocus.test.jsx`).
+- Vùng chạm >= 44px (mũi tên `size-11`, thumbnail `min-h-11`, nút/ link `min-h-11`); focus-visible global (outline 2px `accent`); trạng thái không chỉ dựa vào màu (luôn kèm chữ: "Còn thiếu", "Ảnh mô phỏng", "Đã hết lượt…").
+- Ảnh kết quả có `alt`; ảnh trang trí (nền mờ, flat lay trong khung chờ) `alt=""`.
+
+### Navigation
+- Đến từ: `/try-on` (chọn danh mục), URL trực tiếp / reload, `RequireAuth` (`/login?redirect=/try-on/...`).
+- Đi tới: `/try-on` ("Chọn danh mục khác", thẻ "Đã xem hết", "Để sau" ở hộp thoại đồng ý, 404 danh mục), `/profile` (màn Hoàn thiện hồ sơ, link "Đổi ảnh toàn thân").
+
+### Ghi chú
+- Cache client `entries` sống trong phiên trang (đổi danh mục = mount lại, `key={categoryId}`); không lưu `localStorage`.
+- Chưa test trên thiết bị cảm ứng thật: vuốt đã kiểm tra bằng Pointer Events tổng hợp ở 375px (xem báo cáo Task 2).
+
+### Nối API thật (Sprint 3 Task 4, đã xong)
+Mọi dữ liệu đi qua **một file** `frontend/src/features/tryOn/tryOnApi.js`, re-export từ `services/tryOnApi.js` (`requestTryOn`, `getTryOn`, `getQuota`, `giveConsent`), `services/categoryApi.js` (`fetchCategories`, `fetchCategoryProducts`) và `services/userApi.js` (`fetchProfile`); tất cả dùng `apiClient` dùng chung. Không còn mock (`mocks/tryOnMock.js`, `?mock=` và `sessionStorage` `tryon_mock_scenario` đã xoá).
+
+| Hàm trong `features/tryOn/tryOnApi.js` | API | Response | Nơi dùng |
+|-----------------------------------------|-----|----------|----------|
+| `fetchProfile({ signal })` | `services/userApi.fetchProfile` (đã có) | `{ profile }` — cần thêm `tryOnConsentAt` (backend Task 3) | `useTryOnAccess` |
+| `fetchCategories({ signal })` | `GET /api/categories` | `{ categories: [{ id, name, slug }] }` | `useCategories` |
+| `fetchCategoryProducts(id, { signal })` | `GET /api/categories/:id/products` | `{ category: { id, name, slug }, products: [{ id, name, price, imageUrl }] }`; 404 `CATEGORY_NOT_FOUND` | `useTryOnRoom.loadList` |
+| `requestTryOn(productId, { signal })` | `POST /api/try-on { productId }` | `{ tryOn, quota }` (client không phân biệt 200/202); lỗi: 409 `PROFILE_INCOMPLETE` (`fields`), 409 `TRY_ON_CONSENT_REQUIRED`, 429 `TRY_ON_QUOTA_EXCEEDED`, 404 `PRODUCT_NOT_FOUND`, 503 `TRY_ON_UNAVAILABLE`, 429 `TOO_MANY_REQUESTS` | `useTryOnRoom.request` |
+| `getTryOn(id, { signal })` | `GET /api/try-on/:id` | `{ tryOn }`; 404 `TRY_ON_NOT_FOUND` | poll + `onImageError` |
+| `getQuota({ signal })` | `GET /api/try-on/quota` | `{ quota: { limit, used, remaining, resetsAt } }` | `refreshQuota` |
+| `giveConsent({ signal })` | `POST /api/try-on/consent` | `{ profile }` (idempotent) | `useTryOnAccess.giveConsent` |
+
+`TryOn` = `{ id, productId, status: 'processing'|'succeeded'|'failed', imageUrl, error: { code, message } | null, simulated, createdAt, completedAt }`.
+
+Hành vi của `features/tryOn/useTryOnRoom.js`:
+1. **Debounce 400 ms**: chỉ `POST /api/try-on` cho sản phẩm user dừng lại; không prefetch sản phẩm khác (Q15).
+2. **Poll** `GET /api/try-on/:id` mỗi 2 s, tối đa 120 s tính từ lúc bắt đầu yêu cầu sản phẩm đó; chỉ poll sản phẩm đang hiển thị (rời sản phẩm -> dừng poll, job vẫn chạy ở server; quay lại -> GET ngay rồi poll tiếp); `AbortController` khi rời trang. Lỗi mạng/5xx tạm thời -> poll tiếp tới hết 120 s; 404 -> `failed`.
+3. **Theo `error.code`** của POST: 409 `PROFILE_INCOMPLETE` -> màn Hoàn thiện hồ sơ; 409 `TRY_ON_CONSENT_REQUIRED` -> hộp thoại đồng ý (đồng ý xong phòng thử đồ mount lại và POST lại); 429 `TRY_ON_QUOTA_EXCEEDED` -> khối hết lượt + `getQuota()` (UI dùng chữ cố định "00:00 ngày mai (giờ Việt Nam)", không đọc `Retry-After`); 404 `PRODUCT_NOT_FOUND` -> tải lại danh sách; mã khác (503 `TRY_ON_UNAVAILABLE`, 429 `TOO_MANY_REQUESTS`, mạng, `failed`) -> khối lỗi + Thử lại (POST lại).
+4. **`<img onError>`** -> `GET` lại một lần để lấy `imageUrl` ký mới; vẫn lỗi -> `IMAGE_LOAD_FAILED` (mã chỉ có ở client) + Thử lại (POST lại -> cache hit 200).
+5. **Hồ sơ**: `useTryOnAccess` gọi `fetchProfile` mỗi lần mở `/try-on` hoặc `/try-on/:id` (đọc `tryOnConsentAt`); sau `giveConsent` dùng `profile` trả về, không hỏi lại.
+6. **Đích sau đăng nhập** = `/try-on` (Q19): `GuestOnly` dùng `safeRedirect(redirect) ?? PATHS.tryOn`.

@@ -63,3 +63,20 @@ export function readImageSize(buffer, type) {
     return null;
   }
 }
+
+/**
+ * Như detectImageType nhưng nhận thêm WebP (RIFF....WEBP). Chỉ dùng cho ảnh KẾT QUẢ thử đồ
+ * (bucket try-on-results cho phép webp); avatar/ảnh sản phẩm vẫn chỉ JPG/PNG qua detectImageType.
+ */
+export function detectResultImageType(buffer) {
+  const basic = detectImageType(buffer);
+  if (basic) return basic;
+  if (
+    buffer.length >= 12 &&
+    buffer.toString('latin1', 0, 4) === 'RIFF' &&
+    buffer.toString('latin1', 8, 12) === 'WEBP'
+  ) {
+    return { ext: 'webp', contentType: 'image/webp' };
+  }
+  return null;
+}

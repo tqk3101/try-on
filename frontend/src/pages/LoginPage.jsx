@@ -98,7 +98,7 @@ export default function LoginPage() {
     setSubmitting(true);
     setFormError('');
     try {
-      // Điều hướng sau đăng nhập do GuestOnly đảm nhiệm (safeRedirect(redirect) ?? /profile).
+      // Điều hướng sau đăng nhập do GuestOnly đảm nhiệm (safeRedirect(redirect) ?? /try-on).
       await login({ email: values.email.trim(), password: values.password });
     } catch (error) {
       setSubmitting(false);

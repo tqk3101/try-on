@@ -5,7 +5,7 @@ import { signUrl } from './storageService.js';
 export const AVATAR_BUCKET = 'avatars';
 // Cột tường minh: không bao giờ select password_hash; avatar_path không trả ra client.
 const PROFILE_COLUMNS =
-  'id, email, role, display_name, phone, height_cm, weight_kg, avatar_path, created_at, updated_at';
+  'id, email, role, display_name, phone, height_cm, weight_kg, avatar_path, try_on_consent_at, created_at, updated_at';
 
 const invalidToken = () => new HttpError(401, 'INVALID_TOKEN', 'Phiên đăng nhập không hợp lệ.');
 
@@ -25,6 +25,7 @@ async function toProfile(row) {
     heightCm: toNumberOrNull(row.height_cm),
     weightKg: toNumberOrNull(row.weight_kg),
     avatarUrl: await signUrl(AVATAR_BUCKET, row.avatar_path),
+    tryOnConsentAt: row.try_on_consent_at ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -63,6 +64,20 @@ export function updateProfile(userId, { displayName, phone, heightCm, weightKg }
     height_cm: heightCm,
     weight_kg: weightKg,
   });
+}
+
+/**
+ * POST /api/try-on/consent: ghi thời điểm đồng ý xử lý ảnh. Idempotent: đã đồng ý thì giữ nguyên
+ * mốc đầu tiên (chỉ UPDATE khi còn null). Trả Profile; user không còn tồn tại -> 401.
+ */
+export async function giveTryOnConsent(userId) {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ try_on_consent_at: new Date().toISOString() })
+    .eq('id', userId)
+    .is('try_on_consent_at', null);
+  if (error) throw dbError('update profiles.try_on_consent_at', error);
+  return getProfile(userId);
 }
 
 /** Lấy avatar_path hiện tại (có thể null); không có dòng -> 401. */

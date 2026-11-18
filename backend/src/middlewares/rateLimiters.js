@@ -50,6 +50,20 @@ export const avatarLimiter = createLimiter({
   keyGenerator: (req) => req.user.id,
 });
 
+/** Thử đồ POST /api/try-on và POST /consent (dùng chung bộ đếm): 20 lần / phút / user. Đặt sau requireAuth. */
+export const tryOnLimiter = createLimiter({
+  windowMs: 60 * 1000,
+  limit: 20,
+  keyGenerator: (req) => req.user.id,
+});
+
+/** Thử đồ GET (poll kết quả, quota): 120 lần / phút / user (poll 2 s vẫn dư). Đặt sau requireAuth. */
+export const tryOnPollLimiter = createLimiter({
+  windowMs: 60 * 1000,
+  limit: 120,
+  keyGenerator: (req) => req.user.id,
+});
+
 /** Ảnh sản phẩm (POST + PUT dùng chung bộ đếm): 60 lần / 15 phút / user. Đặt sau requireAuth. */
 export const productImageLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,

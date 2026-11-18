@@ -22,11 +22,11 @@ export default function LandingPage() {
       </a>
       <LandingHeader user={user} onLogout={logout} />
       <main id="main">
-        <Hero />
+        <Hero user={user} />
         <Features />
         <HowItWorks />
         <Categories />
-        <CtaBand />
+        <CtaBand user={user} />
       </main>
       <LandingFooter />
     </>

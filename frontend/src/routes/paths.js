@@ -4,6 +4,8 @@ export const PATHS = {
   login: '/login',
   register: '/register',
   profile: '/profile',
+  tryOn: '/try-on',
+  tryOnRoom: '/try-on/:categoryId',
   admin: '/admin',
   adminCategories: '/admin/categories',
   adminProducts: '/admin/products',
@@ -11,6 +13,8 @@ export const PATHS = {
 };
 
 export const adminProductEditPath = (id) => `/admin/products/${encodeURIComponent(id)}/edit`;
+
+export const tryOnRoomPath = (categoryId) => `/try-on/${encodeURIComponent(categoryId)}`;
 
 /** Thêm `?categoryId=` (nếu có) vào một đường dẫn admin để giữ bộ lọc danh mục. */
 export const withCategoryFilter = (path, categoryId) =>

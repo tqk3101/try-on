@@ -59,7 +59,7 @@ export function GuestOnly() {
 
   if (status === 'checking') return <FullPageSpinner />;
   if (status === 'authenticated') {
-    return <Navigate to={safeRedirect(searchParams.get('redirect')) ?? PATHS.profile} replace />;
+    return <Navigate to={safeRedirect(searchParams.get('redirect')) ?? PATHS.tryOn} replace />;
   }
   return <Outlet />;
 }

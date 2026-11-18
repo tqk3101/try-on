@@ -60,3 +60,34 @@ export async function signUrls(bucket, paths) {
   }
   return result;
 }
+
+/**
+ * Tải object về Buffer. Không có object / lỗi Storage -> trả null (chỉ log, không lộ path);
+ * caller quyết định coi là lỗi gì.
+ */
+export async function downloadObject(bucket, path) {
+  try {
+    const { data, error } = await supabase.storage.from(bucket).download(path);
+    if (error || !data) {
+      console.error(`[storage] Tải object ${bucket} thất bại:`, error?.message ?? 'no data');
+      return null;
+    }
+    return Buffer.from(await data.arrayBuffer());
+  } catch (err) {
+    console.error(`[storage] Tải object ${bucket} thất bại:`, err?.message ?? err);
+    return null;
+  }
+}
+
+/** Xoá nhiều object cùng bucket, best-effort (lỗi chỉ log). */
+export async function removeObjects(bucket, paths) {
+  const unique = [...new Set(paths.filter(Boolean))];
+  if (unique.length === 0) return;
+  try {
+    const { error } = await supabase.storage.from(bucket).remove(unique);
+    if (error)
+      console.error(`[storage] Xoá ${unique.length} object ${bucket} thất bại:`, error.message);
+  } catch (err) {
+    console.error(`[storage] Xoá object ${bucket} thất bại:`, err?.message ?? err);
+  }
+}

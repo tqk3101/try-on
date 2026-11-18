@@ -4,7 +4,7 @@ Nhật ký các lỗi đã gặp khi làm dự án và cách sửa, nhóm theo l
 
 Mỗi mục: **Triệu chứng** → **Nguyên nhân** → **Cách sửa / phòng tránh**.
 
-Cập nhật lần cuối: 2026-11-03 (Sprint 1, Task 5–7).
+Cập nhật lần cuối: 2026-11-17 (Sprint 3, Task 1).
 
 ## Mục lục
 1. [Database / Supabase](#1-database--supabase)
@@ -37,6 +37,11 @@ Cập nhật lần cuối: 2026-11-03 (Sprint 1, Task 5–7).
 - **Nguyên nhân:** Supabase MCP yêu cầu người dùng xác nhận các câu lệnh ghi (DELETE/UPDATE); chạy trong subagent nền thì không ai xác nhận kịp.
 - **Cách sửa:** agent chính chạy lại lệnh ở foreground để người dùng xác nhận.
 - **Phòng tránh:** subagent KHÔNG chịu trách nhiệm xoá dữ liệu test qua MCP: yêu cầu nó liệt kê email test, agent chính xoá. Dùng `delete ... where email like 'test.%@example.com' returning email` để xoá gọn và thấy kết quả.
+
+### 1.4 `apply_migration` gọi song song -> trùng version
+- **Triệu chứng:** gọi 2 `apply_migration` cùng lúc, cái sau lỗi `23505 duplicate key ... schema_migrations_pkey (version)`.
+- **Nguyên nhân:** version migration lấy theo thời gian đến giây; hai lệnh chạy song song nhận cùng version. Lệnh lỗi bị rollback hoàn toàn nên chưa áp gì.
+- **Cách sửa / phòng tránh:** chạy migration **tuần tự** (008 xong mới 009), rồi `list_migrations` để xác nhận.
 
 ---
 
@@ -165,6 +170,13 @@ Cập nhật lần cuối: 2026-11-03 (Sprint 1, Task 5–7).
 /g, '
 ')` khi đọc. KHÔNG "sửa" bằng cách format lại cả repo (tạo diff khổng lồ).
 
+### 6.8 Playwright MCP báo `Browser is already in use for ...ms-playwright-mcpmcp-chrome-...`
+- **Triệu chứng:** mọi lệnh Playwright MCP (kể cả `browser_close`) lỗi; subagent không verify được trình duyệt và bàn giao thiếu.
+- **Nguyên nhân:** một Chrome cũ của chính Playwright MCP vẫn giữ profile (tiến trình cha là `@playwright/mcp/cli.js`); `browser_close` không còn điều khiển được nó.
+- **Cách sửa / phòng tránh:** KHÔNG kill tiến trình khi chưa chắc là của mình (6.2). Chạy kịch bản bằng `playwright-core` trong cache npx (`%LOCALAPPDATA%
+pm-cache_npx*
+ode_modules`) với `chromium.launch({ executablePath: chrome.exe, headless: true })` (profile tạm riêng) và cổng dev riêng (backend 3100, frontend 5174 + `VITE_API_URL`). Đặt script ngoài repo; không in mật khẩu seed. Khi giao verify trình duyệt cho subagent, nói trước phương án dự phòng này.
+
 ---
 
 ## 7. Kiểm thử & dữ liệu test
@@ -175,6 +187,7 @@ Cập nhật lần cuối: 2026-11-03 (Sprint 1, Task 5–7).
 
 ### 7.1b Object test còn sót trong Supabase Storage
 - **Phòng tránh:** sau mỗi đợt test avatar, kiểm tra `select count(*) from storage.objects where bucket_id = 'avatars';` về 0 (xoá ảnh qua UI/API `DELETE /user/profile/avatar` rồi mới xoá user). Xoá user trước khi xoá object sẽ để lại object mồ côi.
+- **Bucket cần kiểm tra (từ Sprint 3):** `avatars`, `products` và `try-on-results`. Kiểm tra gộp: `select bucket_id, count(*) from storage.objects where bucket_id in ('avatars','products','try-on-results') group by bucket_id;` phải rỗng sau test, và `select count(*) from public.try_on_results;` về 0. Ảnh kết quả thử đồ nằm ở `{profile_id}/{product_id}/{id}.{jpg|png|webp}`; xoá row `try_on_results` (hoặc user/sản phẩm gây cascade) KHÔNG xoá object: lấy `result_path` trước rồi xoá object bằng service role. Khi nhiều agent test song song, mỗi agent chỉ dọn dữ liệu CỦA MÌNH (tiền tố tên sản phẩm, user test riêng) và kiểm tra theo tiền tố/user thay vì đòi bảng global = 0.
 
 ### 7.2 Token cũ trong localStorage làm nhiễu test
 - **Triệu chứng:** mở app có 2 lỗi console `401 /user/profile` trước khi làm gì.
