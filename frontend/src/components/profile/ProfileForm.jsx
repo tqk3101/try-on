@@ -12,7 +12,7 @@ import { useAuth } from '../../auth/authContext.js';
 import { useToast } from '../toastContext.js';
 import TextField from '../TextField.jsx';
 import AvatarField from './AvatarField.jsx';
-import ConfirmDialog from './ConfirmDialog.jsx';
+import ConfirmDialog from '../ConfirmDialog.jsx';
 
 const CLIENT_ERROR_CODES = [
   'VALIDATION_ERROR',

@@ -145,8 +145,8 @@ Lỗi **trong job** sinh ảnh không phải HTTP error: trả trong `tryOn.erro
 | Path | Loại | Ghi chú |
 |------|------|---------|
 | `/` | Public | Landing. Đã đăng nhập vẫn xem được |
-| `/register` | Chỉ khách (guest-only) | Đã đăng nhập → chuyển `/profile`. Đăng ký thành công → `/login` (router state `{ registered: true, email }`, giữ query `redirect` nếu có) |
-| `/login` | Chỉ khách | Đã đăng nhập → chuyển `redirect` hợp lệ hoặc `/profile`. Đọc query `redirect`, `reason=expired` và router state `registered`, `email` (banner đăng ký thành công + điền sẵn email) |
+| `/register` | Chỉ khách (guest-only) | Đã đăng nhập → chuyển `/try-on` (từ Sprint 3 Task 4; trước đó `/profile`). Đăng ký thành công → `/login` (router state `{ registered: true, email }`, giữ query `redirect` nếu có) |
+| `/login` | Chỉ khách | Đã đăng nhập → chuyển `redirect` hợp lệ hoặc `/try-on` (từ Sprint 3 Task 4; trước đó `/profile`). Đọc query `redirect`, `reason=expired` và router state `registered`, `email` (banner đăng ký thành công + điền sẵn email) |
 | `/profile` | Bảo vệ (cần đăng nhập) | Đích mặc định **sau đăng nhập** ở Sprint 1–2 (chưa có dashboard); từ Sprint 3 Task 4 đổi sang `/try-on` (Q19). Không phải đích sau đăng ký |
 | `/admin` | Chỉ admin (Sprint 2) | Chuyển `/admin/categories`. Guest → `/login?redirect=`; user thường → trang 403 |
 | `/admin/categories` | Chỉ admin | Danh sách + thêm/sửa trong hộp thoại, xác nhận xoá |
@@ -175,7 +175,7 @@ Thêm `profile: '/profile'` vào `PATHS` và bật `AUTH_ENABLED = true` trong `
 | D8 | Chống brute-force | `express-rate-limit` (bộ nhớ trong, theo IP): login 10 lần **thất bại** / 15 phút (`skipSuccessfulRequests: true`); register 10 / giờ; avatar 20 / 15 phút theo `sub`. Vượt → 429 `TOO_MANY_REQUESTS` + header `Retry-After`. **Không khoá tài khoản** | Khoá tài khoản cho phép kẻ xấu khoá tài khoản người khác và cần thêm cột DB. Memory store đủ cho 1 instance; nhiều instance cần store chung (Redis) |
 | D9 | Mật khẩu | 8–72 ký tự, ≤ 72 byte UTF-8, **bắt buộc** có chữ thường, chữ hoa, chữ số; ký tự đặc biệt chỉ khuyến nghị (thanh độ mạnh ở UI). Không trim mật khẩu | US-01 "tối thiểu 8, nên có…". bcrypt bỏ qua phần sau 72 byte. Seed (mật khẩu mới, ngoài repo) thoả |
 | D10 | Kiểm tra trùng email | SELECT trước (thoát sớm, không tốn bcrypt) **và** bắt lỗi `23505` khi INSERT (race 2 request cùng lúc) → cùng trả 409 | UNIQUE ở DB là nguồn sự thật cuối cùng |
-| D11 | Quay lại trang cũ sau login | Query `?redirect=<path>`, chỉ chấp nhận path nội bộ (bắt đầu `/`, không phải `//` hay `/\`, không phải `/login`, `/register`); sai → `/profile` | Sống sót khi reload; dùng được từ handler 401 ngoài React tree; chống open redirect |
+| D11 | Quay lại trang cũ sau login | Query `?redirect=<path>`, chỉ chấp nhận path nội bộ (bắt đầu `/`, không phải `//` hay `/\`, không phải `/login`, `/register`); sai → `/try-on` (Sprint 3 Task 4; trước đó `/profile`) | Sống sót khi reload; dùng được từ handler 401 ngoài React tree; chống open redirect |
 | D12 | Xử lý 401 ở `apiClient` | Chỉ xoá token + gọi `unauthorizedHandler` khi request **có gửi kèm token**. 401 của login (không có token) trả về form như lỗi thường | Code hiện tại xử lý mọi 401, sẽ làm form login bị điều hướng khi sai mật khẩu |
 | D13 | Khôi phục phiên khi tải lại trang | Có token → kiểm tra `exp` (decode base64url, không verify) → còn hạn thì gọi `GET /api/user/profile` để lấy user; không thêm endpoint `/auth/me` | Dùng lại endpoint có sẵn; server vẫn là nơi verify |
 | D14 | Kiểm tra ảnh | Server: bắt buộc loại (MIME + magic bytes) và dung lượng. Client: kiểm tra loại/dung lượng (chặn) + tỷ lệ/kích thước (chỉ **cảnh báo**, cho phép "Vẫn dùng ảnh này") | US-02 ghi tỷ lệ/kích thước là "khuyến nghị", "kiểm tra sơ bộ". Trình duyệt đã xoay theo EXIF nên đo ở client chính xác hơn đo bytes ở server |

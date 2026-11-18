@@ -19,13 +19,20 @@ export const ERROR_MESSAGES = Object.freeze({
  * Lỗi của provider đã được ánh xạ về mã job.
  * `permanent`: provider không dùng được tới khi sửa cấu hình (model 404, key sai) -> đánh dấu
  * không khả dụng, các POST sau trả 503 TRY_ON_UNAVAILABLE.
+ * `status` (HTTP của provider) và `finishReason` chỉ để log nội bộ ở jobRunner; không bao giờ ghi vào
+ * DB hay trả cho client (client chỉ nhận `code` + thông điệp cố định theo ERROR_MESSAGES).
  */
 export class TryOnProviderError extends Error {
-  constructor(code, { permanent = false, providerJobId = null, cause } = {}) {
+  constructor(
+    code,
+    { permanent = false, providerJobId = null, status = null, finishReason = null, cause } = {},
+  ) {
     super(code, cause ? { cause } : undefined);
     this.name = 'TryOnProviderError';
     this.code = code;
     this.permanent = permanent;
     this.providerJobId = providerJobId;
+    this.status = status;
+    this.finishReason = finishReason;
   }
 }

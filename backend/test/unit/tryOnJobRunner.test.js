@@ -259,6 +259,42 @@ describe('jobRunner: lỗi', () => {
     expect(logged).toContain('GENERATION_FAILED');
     expect(logged).not.toMatch(/SECRET-KEY|base64/);
   });
+
+  it('log in finishReason và status của TryOnProviderError; không ghi chúng vào row', async () => {
+    const provider = {
+      generate: vi.fn(async () => {
+        throw new TryOnProviderError(ERROR_CODES.INPUT_REJECTED, {
+          status: 400,
+          finishReason: 'IMAGE_SAFETY',
+          cause: new Error('SECRET-KEY-123 base64=='),
+        });
+      }),
+      markUnavailable: vi.fn(),
+    };
+    const { runner, repo, row, logger } = await setup({ provider });
+    runner.enqueue(row.id);
+    await runner.idle();
+    const logged = logger.warn.mock.calls.map(([line]) => line).join(' | ');
+    expect(logged).toContain('code=INPUT_REJECTED');
+    expect(logged).toContain('status=400');
+    expect(logged).toContain('finishReason=IMAGE_SAFETY');
+    expect(logged).not.toMatch(/SECRET-KEY|base64/);
+    const saved = JSON.stringify(dbRow(repo, row.id));
+    expect(saved).not.toContain('IMAGE_SAFETY');
+  });
+
+  it('không có finishReason thì log in dấu "-"', async () => {
+    const provider = {
+      generate: vi.fn(async () => {
+        throw new TryOnProviderError(ERROR_CODES.GENERATION_FAILED);
+      }),
+      markUnavailable: vi.fn(),
+    };
+    const { runner, row, logger } = await setup({ provider });
+    runner.enqueue(row.id);
+    await runner.idle();
+    expect(logger.warn.mock.calls[0][0]).toContain('finishReason=-');
+  });
 });
 
 describe('jobRunner: đồng thời', () => {

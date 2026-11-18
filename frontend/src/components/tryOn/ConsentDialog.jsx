@@ -1,4 +1,4 @@
-import ConfirmDialog from '../profile/ConfirmDialog.jsx';
+import ConfirmDialog from '../ConfirmDialog.jsx';
 
 /**
  * Hộp thoại đồng ý xử lý ảnh (một lần, Q14). Nêu rõ ảnh được gửi tới Google (Gemini API).

@@ -163,8 +163,8 @@ User Stories: US-01, US-02
 - UI phản hồi khi save thành công/thất bại
 
 ### Backlog phát sinh (ghi cho Task 7 / sprint sau)
-- [ ] `document.title` chưa được đặt lại ở landing và trang 404 nên còn tiêu đề của trang trước (ví dụ "Hồ sơ — Try-on"). Acceptance: mỗi route đặt title riêng.
-- [ ] Cân nhắc chỉ tính lần đăng nhập sai (401) vào `loginLimiter`, không tính 400.
+- [x] (đã xong Sprint 2; verify trình duyệt 2026-11-17: mọi route có title riêng "<Tên trang> — Try-on") `document.title` chưa được đặt lại ở landing và trang 404 nên còn tiêu đề của trang trước (ví dụ "Hồ sơ — Try-on"). Acceptance: mỗi route đặt title riêng.
+- [x] (đã xong; `rateLimiters.js` chỉ tính 401, có test `limiters.http.test.js` và đã verify 2026-11-17) Cân nhắc chỉ tính lần đăng nhập sai (401) vào `loginLimiter`, không tính 400.
 
 ## Definition of Done
 - Code được review

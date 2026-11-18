@@ -187,6 +187,7 @@ ode_modules`) với `chromium.launch({ executablePath: chrome.exe, headless: tru
 
 ### 7.1b Object test còn sót trong Supabase Storage
 - **Phòng tránh:** sau mỗi đợt test avatar, kiểm tra `select count(*) from storage.objects where bucket_id = 'avatars';` về 0 (xoá ảnh qua UI/API `DELETE /user/profile/avatar` rồi mới xoá user). Xoá user trước khi xoá object sẽ để lại object mồ côi.
+- **Bucket cần kiểm tra (từ Sprint 3):** `avatars`, `products` và `try-on-results`. Kiểm tra gộp: `select bucket_id, count(*) from storage.objects where bucket_id in ('avatars','products','try-on-results') group by bucket_id;` phải rỗng sau test, và `select count(*) from public.try_on_results;` về 0. Ảnh kết quả thử đồ nằm ở `{profile_id}/{product_id}/{id}.{jpg|png|webp}`; xoá row `try_on_results` (hoặc user/sản phẩm gây cascade) KHÔNG xoá object: lấy `result_path` trước rồi xoá object bằng service role. Khi nhiều agent test song song, mỗi agent chỉ dọn dữ liệu CỦA MÌNH (tiền tố tên sản phẩm, user test riêng) và kiểm tra theo tiền tố/user thay vì đòi bảng global = 0.
 
 ### 7.2 Token cũ trong localStorage làm nhiễu test
 - **Triệu chứng:** mở app có 2 lỗi console `401 /user/profile` trước khi làm gì.

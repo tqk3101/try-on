@@ -45,7 +45,49 @@ Chạy bằng `backend/scripts/gemini-try-on.js` với 1 cặp ảnh: ảnh ngư
 | Ảnh ra | Kích thước khác ảnh vào (843×1264 từ 1000×1500, giữ tỉ lệ 2:3); mime có thể khác ảnh vào → đọc từ phản hồi, xác định lại bằng magic bytes |
 | Prompt lỏng ("người mặc món đồ") | Gemini tự "phối đủ bộ": đổi quần, thêm cà vạt, đổi tư thế tay → **không đạt** |
 | Prompt chặt (mục 2.3) | Giữ đúng quần, tư thế, mặt, tóc, nền; chỉ thay áo vest. Còn lệch nhẹ sắc độ màu áo (nhạt hơn ảnh sản phẩm) |
-| Chưa thử | Ảnh toàn thân thật (đầu tới chân), áo thun / sơ mi flat lay, váy, quần, hoa văn nhỏ. Chưa tra giá chính thức của `gemini-3.1-flash-image` và chính sách dữ liệu tier trả phí vs miễn phí → **Task 6** |
+| Đã bổ sung ở Task 6 | Ảnh toàn thân, áo thun/sơ mi/váy/quần/hoa văn/áo khoác, giá, chính sách dữ liệu: xem mục "Kết quả đo Task 6" ngay dưới |
+
+#### Kết quả đo Task 6 (2026-11-18)
+
+**Chốt: model `gemini-3.1-flash-image`, `promptVersion` `p2` (prompt giữ nguyên, không đổi nên không tăng phiên bản).** `ai.models.list()` ngày 2026-11-18 vẫn có `gemini-3.1-flash-image`, `gemini-3-pro-image`, `gemini-3.1-flash-lite-image`, `gemini-2.5-flash-image`.
+
+**Bộ ảnh (toàn bộ do Gemini sinh, người HƯ CẤU, không ảnh thật):** 4 người toàn thân (nền trơn, 848×1264) × 7 ảnh flat lay (áo thun vàng, sơ mi sọc, váy xanh, quần chino, sơ mi chấm bi nhỏ, áo khoác bomber, hoodie). 13 cặp chạy qua đúng `createGeminiProvider` (cùng prompt production, `scripts/gemini-bench.js`): áo thun ×2, sơ mi ×2, váy ×2, quần ×2, hoa văn nhỏ ×2, áo khoác ×2, hoodie ×1. Ảnh người/kết quả lưu ngoài repo.
+
+| Hạng mục | Kết quả (n = 13, `gemini-3.1-flash-image`) |
+|----------|--------------------------------------------|
+| Thành công | 13/13; lỗi theo `error_code`: không có (0 `INPUT_REJECTED`/`GENERATION_*`/`PROVIDER_UNAVAILABLE`) |
+| Độ trễ mỗi ảnh | min 8,0 s · **p50 9,0 s** · **p95 10,4 s** · max 10,4 s → đạt p95 ≤ 30 s (đo tuần tự, 1 request/lần, chưa đo song song `TRY_ON_MAX_CONCURRENCY`=3) |
+| Ảnh ra | JPEG (`image/jpeg`, ~0,55–0,66 MB) dù ảnh vào PNG; 848×1264 (đúng tỉ lệ 2:3 của ảnh người vào) |
+| Qua stack thật | Backend 3100 + frontend 5174, provider `gemini`, user test + 3 sản phẩm: POST 202 → poll → job `succeeded` 8,6 s; ảnh hiển thị trong phòng thử đồ, **không có nhãn "Ảnh mô phỏng"** (`simulated: false`), "Còn 29 lượt hôm nay" |
+
+Nhận xét chất lượng (10/13 ảnh đã xem trực tiếp: 01, 03, 04, 05, 06, 08, 09, 10, 12, 13; 02, 07, 11 chưa xem lại):
+- **Áo thun, sơ mi, áo khoác:** tốt. Giữ mặt, tóc, tư thế hai tay, quần/giày, nền; đúng màu (vàng mù tạt, xanh nhạt sọc, đỏ rượu); chi tiết áo khoác (khoá, túi tay, bo gấu) tái tạo đúng. Không thêm đồ.
+- **Quần:** tốt. Người mặc quần short được thay bằng quần chino dài đúng màu ô-liu, giữ áo đang mặc (04, 09). Chưa thử quần ống rộng/jeans.
+- **Váy:** tốt, đúng kiểu và màu; thay cả bộ áo+quần/short gốc (03, 12). Lỗi nhỏ: 12 còn một mảng nhỏ màu da/be ở nách phải (tàn dư áo gốc).
+- **Hoa văn nhỏ (chấm bi):** đúng màu và hoạ tiết nhìn tổng thể, nhưng **mật độ/kích thước chấm lệch nhẹ** so với ảnh sản phẩm và 13 có đường chia dọc giữa thân áo (nửa trái chấm dày hơn nửa phải). Đây là loại yếu nhất; chưa đủ nặng để cần đổi prompt.
+- Nền/ánh sáng hầu như giữ nguyên; ảnh bị nén lại (JPEG) nên có khác nhẹ về chi tiết.
+- Giới hạn của phép đo: n nhỏ (13), ảnh hư cấu sạch nền trơn/dáng đứng thẳng, chấm bằng mắt không có thước đo định lượng; ảnh người thật chụp bằng điện thoại, dáng lệch, nền phức tạp, áo nhiều lớp chưa được kiểm chứng. Chưa thử: nhiều lớp áo (áo khoác khoác ngoài áo khác), đồ dài tay -> ngắn tay, ảnh sản phẩm có người mặc.
+
+**So sánh `gemini-3-pro-image`** (3 cặp: 05, 12, 13): thành công 3/3, **chậm gần gấp đôi (17,4–19,4 s)**, giá cao gấp ~2 lần; ảnh 13 ra **1024×1024 (đổi khung hình, không giữ tỉ lệ 2:3 của ảnh vào)** nên không khớp khung 3:4 của UI; chất lượng hoạ tiết không rõ rệt hơn. Không chọn; chỉ là dự phòng.
+
+**Giá chính thức** (nguồn: https://ai.google.dev/gemini-api/docs/pricing, chuyển hướng sang aistudio.google.com/docs/pricing; tra 2026-11-18). Ba model ảnh **không có free tier** (chỉ có tier trả phí):
+
+| Model | Giá đầu ra/ảnh (tier trả phí) | Ghi chú |
+|-------|-------------------------------|---------|
+| `gemini-3.1-flash-image` | 0,045 USD (0,5K), **0,067 USD (1K)**, 0,101 (2K), 0,151 (4K) | đầu vào 0,50 USD/1M token ảnh/text; ảnh ra ~0,7 megapixel (848×1264) gần mức 1K → ước tính ~0,07 USD/ảnh (đã gồm 2 ảnh vào chưa tách riêng) |
+| `gemini-3-pro-image` | 0,134 USD (1K/2K), 0,24 (4K) | đầu vào 0,0011 USD/ảnh |
+| `gemini-2.5-flash-image` | 0,039 USD (≤1024×1024) | **đã deprecated, dự kiến tắt 2027-03-15** |
+
+Với hạn mức 30 lượt/user/ngày (Q18): tối đa ~2 USD/user/ngày (chỉ lượt gọi thật; cache hit không tốn).
+
+**Chính sách dữ liệu** (nguồn: https://ai.google.dev/gemini-api/terms, chuyển hướng sang aistudio.google.com/docs/terms; tra 2026-11-18):
+- **Tier miễn phí (Unpaid Services):** Google dùng nội dung gửi lên để cải thiện sản phẩm/huấn luyện; người đánh giá có thể đọc input/output (đã tách khỏi tài khoản/API key); khuyến cáo không gửi dữ liệu nhạy cảm/cá nhân. Bảng giá ghi "dùng để cải thiện sản phẩm: Có" cho tier miễn phí, "Không" cho tier trả phí.
+- **Tier trả phí (Paid Services, project có billing):** Google không dùng prompt/phản hồi để cải thiện sản phẩm; chỉ ghi log prompt/phản hồi trong **thời gian giới hạn** nhằm phát hiện/ngăn vi phạm (điều khoản không nêu số ngày).
+- **Xác nhận project đang dùng tier trả phí:** chưa xác nhận trực tiếp từ console. Chứng cứ gián tiếp: key hiện tại gọi thành công 3 model ảnh trong khi bảng giá ghi các model này không có free tier. **Khuyến nghị người dùng kiểm tra Billing của project trong Google AI Studio** trước khi bật cho người dùng thật. Ảnh toàn thân là dữ liệu cá nhân → mục 10 vẫn áp dụng (consent trước khi gửi).
+
+**Kiểm tra lỗi cấu hình (tiến trình riêng, provider `gemini`):** `GEMINI_API_KEY` rỗng → backend khởi động bình thường, `POST /api/try-on` 503 `TRY_ON_UNAVAILABLE`. `GEMINI_IMAGE_MODEL` sai tên → POST đầu 202, job `failed` `PROVIDER_UNAVAILABLE` sau ~1,4 s (log: status 404 + hướng dẫn sửa model), các POST sau 503 `TRY_ON_UNAVAILABLE`, không crash. Log tiến trình không chứa key/base64/ảnh (grep = 0).
+
+**Số lần gọi Gemini ảnh của Task 6:** 28 lần tạo ảnh (11 sinh bộ ảnh + 13 đo + 3 so sánh Pro + 1 qua stack thật), cộng 1 lần gọi model sai tên trả 404 (thường không tính phí), dưới ngân sách 70; chi phí ước tính ≈ 1,5–2 USD (11+13+1 ≈ 25 lần Flash × ~0,07 + 3 lần Pro × 0,134).
 
 ### 2.2 Cách gọi (adapter `gemini`)
 
@@ -100,7 +142,7 @@ Log chỉ ghi `id`, `code`, `status` HTTP, `finishReason`, thời gian, tên mod
 |--------|-----------|
 | Model bị gỡ/đổi tên (bản `-preview` đã bị gỡ) | Model qua env; 404 → `PROVIDER_UNAVAILABLE` + 503 `TRY_ON_UNAVAILABLE`; kiểm tra danh sách model (`ai.models.list()`) đầu mỗi sprint và trước demo. Dự phòng: `gemini-3-pro-image` (kỳ vọng chất lượng cao hơn, chậm/đắt hơn), `gemini-2.5-flash-image` (đời cũ, có thể bị gỡ sớm hơn); `gemini-3.1-flash-lite-image` nếu cần rẻ. Cả ba **chưa đo chất lượng** → Task 6 |
 | Chất lượng phụ thuộc prompt ("sáng tác" thêm đồ, đổi tư thế, lệch màu) | Prompt chặt cố định + `promptVersion`; đo trên bộ ảnh Task 6 trước khi bật cho người dùng |
-| Giá chưa kiểm chứng | Ước tính từ bên thứ ba ~0,03–0,07 USD/ảnh (Flash), ~0,13 USD (Pro) – Task 6 tra trang giá chính thức; hạn mức 30 lượt/user/ngày (Q18) giới hạn chi phí |
+| Giá | Đã tra chính thức 2026-11-18 (mục 2.1): Flash ~0,067 USD/ảnh (1K), Pro 0,134 USD; hạn mức 30 lượt/user/ngày (Q18) giới hạn chi phí |
 | Hạn mức tốc độ theo tier → 429 | `TRY_ON_MAX_CONCURRENCY` (3) phải thấp hơn giới hạn RPM của tier; 429 không tính lượt người dùng (job `failed`) |
 | Quyền riêng tư (ảnh toàn thân gửi Google) | Mục 10 |
 

@@ -135,11 +135,13 @@ export function useTryOnRoom({ categoryId, onProfileIncomplete, onConsentRequire
     (productId, tryOn, startedAt) => {
       if (tryOn.status === 'succeeded')
         setEntry(productId, { kind: 'succeeded', startedAt, tryOn });
-      else if (tryOn.status === 'failed')
+      else if (tryOn.status === 'failed') {
         setEntry(productId, { kind: 'failed', startedAt, error: tryOn.error });
-      else setEntry(productId, { kind: 'processing', startedAt, tryOn });
+        // Server không tính job lỗi vào hạn mức: lấy lại số lượt thật thay vì giữ số "trừ 1" của POST.
+        refreshQuota();
+      } else setEntry(productId, { kind: 'processing', startedAt, tryOn });
     },
-    [setEntry],
+    [refreshQuota, setEntry],
   );
 
   const request = useCallback(
@@ -228,13 +230,14 @@ export function useTryOnRoom({ categoryId, onProfileIncomplete, onConsentRequire
         }
         if (Date.now() - pollStartedAt > POLL_TIMEOUT_MS) {
           setEntry(currentId, { kind: 'failed', startedAt: pollStartedAt, error: TIMEOUT_ERROR });
+          refreshQuota();
           return;
         }
         await sleep(POLL_INTERVAL_MS, signal);
       }
     })();
     return () => controller.abort();
-  }, [currentId, pollTryOnId, pollStartedAt, applyTryOn, setEntry]);
+  }, [currentId, pollTryOnId, pollStartedAt, applyTryOn, refreshQuota, setEntry]);
 
   const goTo = useCallback(
     (nextIndex) => {

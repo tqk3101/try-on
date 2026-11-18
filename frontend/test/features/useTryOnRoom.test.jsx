@@ -166,6 +166,22 @@ describe('useTryOnRoom: polling', () => {
     expect(result.current.quota).toEqual(QUOTA);
   });
 
+  it('job kết thúc failed -> badge lấy lại số lượt từ GET /quota (job lỗi không tính)', async () => {
+    const afterPost = { ...QUOTA, used: 1, remaining: 5 };
+    const afterFail = { ...QUOTA, used: 0, remaining: 6 };
+    requestTryOn.mockResolvedValue({ tryOn: tryOn('p1', 'processing'), quota: afterPost });
+    getTryOn.mockResolvedValue({
+      tryOn: tryOn('p1', 'failed', { error: { code: 'GENERATION_FAILED', message: 'Lỗi' } }),
+    });
+    const { result } = await mountRoom();
+    getQuota.mockClear();
+    getQuota.mockResolvedValue({ quota: afterFail });
+    await advance(DEBOUNCE_MS);
+    expect(result.current.entry.kind).toBe('failed');
+    expect(getQuota).toHaveBeenCalledTimes(1);
+    expect(result.current.quota.remaining).toBe(6);
+  });
+
   it('dừng sau 120 s: failed GENERATION_TIMEOUT, không poll thêm', async () => {
     const { result } = await mountRoom();
     await advance(DEBOUNCE_MS);

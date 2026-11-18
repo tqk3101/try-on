@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { PATHS } from '../../routes/paths.js';
 import { AlertIcon, ArrowLeftIcon, ArrowRightIcon } from '../icons.jsx';
@@ -118,9 +118,38 @@ export default function TryOnStage({
   swipe,
 }) {
   const kind = entry?.kind ?? 'processing';
+  const frameRef = useRef(null);
+  const prevRef = useRef(null);
+  const nextRef = useRef(null);
+  // Nút nào vừa giữ focus (trình duyệt có thể không báo blur khi nút bị disabled).
+  const lastFocusedRef = useRef(null);
+
+  // Nút đang focus bị disabled (tới cuối/đầu danh sách) -> focus rơi về body và phím ←/→ ngừng hoạt động
+  // (onKeyDown nằm trên vùng phòng thử đồ). Chuyển focus về khung ảnh để vẫn đi tiếp/lùi bằng bàn phím.
+  useEffect(() => {
+    const active = document.activeElement;
+    const lost = (button) =>
+      button &&
+      button.disabled &&
+      (active === button || (active === document.body && lastFocusedRef.current === button));
+    if (lost(prevRef.current) || lost(nextRef.current)) {
+      lastFocusedRef.current = null;
+      frameRef.current?.focus();
+    }
+  }, [canPrev, canNext]);
+
+  const trackFocus = {
+    onFocus: (event) => {
+      lastFocusedRef.current = event.currentTarget;
+    },
+    onBlur: () => {
+      lastFocusedRef.current = null;
+    },
+  };
 
   return (
     <div
+      ref={frameRef}
       role="group"
       tabIndex={0}
       aria-label="Ảnh thử đồ. Dùng phím mũi tên trái hoặc phải để đổi sản phẩm."
@@ -180,7 +209,9 @@ export default function TryOnStage({
 
       <div className="pointer-events-none absolute inset-y-0 left-2 flex items-center">
         <button
+          ref={prevRef}
           type="button"
+          {...trackFocus}
           onClick={onPrev}
           disabled={!canPrev}
           aria-label="Sản phẩm trước"
@@ -191,7 +222,9 @@ export default function TryOnStage({
       </div>
       <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
         <button
+          ref={nextRef}
           type="button"
+          {...trackFocus}
           onClick={onNext}
           disabled={!canNext}
           aria-label="Sản phẩm tiếp theo"

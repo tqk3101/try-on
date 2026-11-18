@@ -45,7 +45,7 @@ Public.
 
 ### Ghi chú
 - **Đăng ký và Đăng nhập:** `/register` (Task 5) và `/login` (Task 6) đã có thiết kế. `AuthLink` đọc `AUTH_ROUTES_READY` trong `frontend/src/routes/paths.js` (cả hai đã `true`, nút "Đăng nhập" là link thật; trang nào chưa có route thì hiển thị nút `aria-disabled` "Sắp ra mắt"). `LandingPage` lấy `user`/`logout` từ `useAuth()`.
-- **Header khi đã đăng nhập:** `LandingHeader` nhận `user`/`onLogout`; có `user` thì thay hai nút Đăng nhập/Đăng ký bằng `AccountMenu` (xem mục "Nút Đăng xuất ở header" bên dưới). Khi đã đăng nhập (Sprint 3 Task 2): CTA hero và nút của CTA band đổi thành "Thử ngay" (link `/try-on`), header desktop có thêm link "Phòng thử đồ" cạnh `AccountMenu`; thẻ danh mục mock vẫn chỉ minh hoạ (chưa liên kết, thuộc Task 7).
+- **Header khi đã đăng nhập:** `LandingHeader` nhận `user`/`onLogout`; có `user` thì thay hai nút Đăng nhập/Đăng ký bằng `AccountMenu` (xem mục "Nút Đăng xuất ở header" bên dưới). Khi đã đăng nhập (Sprint 3 Task 2): CTA hero và nút của CTA band đổi thành "Thử ngay" (link `/try-on`), header desktop có thêm link "Phòng thử đồ" cạnh `AccountMenu`; thẻ danh mục (mock, không dùng id thật) là link tới trang chọn danh mục `/try-on` cho cả khách lẫn user (khách bị `RequireAuth` đưa về `/login?redirect=%2Ftry-on`); mỗi thẻ có `aria-label` "<tên>: vào phòng thử đồ", hover nâng nhẹ, focus-visible outline accent (Sprint 3 Task 7).
 - Trang 404 (`*`) dùng `MainLayout` (header tối giản); landing tự có header/footer.
 - Nội dung là mock tĩnh; không gọi API. Badge health cũ của placeholder đã bỏ khỏi UI (giữ `services/healthApi.js`).
 - Hình minh hoạ không dùng ảnh ngoài; khi có ảnh thật sẽ thay trong `HeroVisual` (giữ tỉ lệ 3:4, thêm `alt`).
@@ -133,7 +133,7 @@ Một cột ở mọi cỡ như `/register`: `w-full max-w-md`, padding `p-6` (m
 
 ## Hồ sơ — `/profile`
 
-Code: `frontend/src/pages/ProfilePage.jsx` (trong `RequireAuth` + `MainLayout`), component ở `components/profile/` (`ProfileForm`, `AvatarField`, `ConfirmDialog`), trạng thái/hành động ở `features/profile/useProfile.js`, dữ liệu qua `features/profile/profileApi.js` (nối API thật qua `services/userApi.js`). Validate: `utils/profileValidation.js`, `utils/avatarCheck.js`. Flow: `design/flows/profile.md`, `avatar-upload.md`.
+Code: `frontend/src/pages/ProfilePage.jsx` (trong `RequireAuth` + `MainLayout`), component ở `components/profile/` (`ProfileForm`, `AvatarField`) và `ConfirmDialog` dùng chung ở `components/ConfirmDialog.jsx`, trạng thái/hành động ở `features/profile/useProfile.js`, dữ liệu qua `features/profile/profileApi.js` (nối API thật qua `services/userApi.js`). Validate: `utils/profileValidation.js`, `utils/avatarCheck.js`. Flow: `design/flows/profile.md`, `avatar-upload.md`.
 
 ### Mục đích
 Xem và cập nhật hồ sơ (tên hiển thị, số điện thoại tuỳ chọn, chiều cao, cân nặng) và ảnh toàn thân dùng cho phòng thử đồ.
@@ -549,6 +549,7 @@ Một `<section aria-label="Phòng thử đồ: {danh mục}">` có `onKeyDown` 
 ### Accessibility
 - `aria-live="polite"` (một vùng duy nhất, `sr-only`): đọc "Sản phẩm {n} trên {N}: {tên}, {giá}." rồi nối trạng thái: "Đang thử đồ {tên}…" -> "Đã tạo xong ảnh." / `error.message` / "Đã hết lượt thử đồ hôm nay." Khối lỗi trong khung có thêm `role="alert"`.
 - Bàn phím: ←/→ đổi sản phẩm khi focus nằm trong vùng phòng thử đồ (khung ảnh `tabIndex=0`, mũi tên, thanh thu nhỏ; **không** bắt phím khi đang ở `input/textarea/select/contenteditable` hoặc có Ctrl/Alt/Meta/Shift). Tab: khung ảnh -> 2 mũi tên (nút disabled bị bỏ qua) -> link "Chọn danh mục khác" -> thanh thu nhỏ -> thẻ "Đã xem hết".
+- Focus khi mũi tên bị disabled: nếu nút "Sản phẩm tiếp theo" / "trước" đang giữ focus mà trở thành disabled (tới cuối / đầu danh sách) thì focus tự chuyển về khung ảnh (`tabIndex=0`) để ←/→ (bắt ở vùng phòng thử đồ) vẫn hoạt động; nút không giữ focus thì không bị cướp focus (`TryOnStage`, test `TryOnStageFocus.test.jsx`).
 - Vùng chạm >= 44px (mũi tên `size-11`, thumbnail `min-h-11`, nút/ link `min-h-11`); focus-visible global (outline 2px `accent`); trạng thái không chỉ dựa vào màu (luôn kèm chữ: "Còn thiếu", "Ảnh mô phỏng", "Đã hết lượt…").
 - Ảnh kết quả có `alt`; ảnh trang trí (nền mờ, flat lay trong khung chờ) `alt=""`.
 
