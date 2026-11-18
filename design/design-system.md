@@ -117,6 +117,27 @@ Chỉ dùng token hiện có (không thêm màu mới). Đặt trong `components
 - Vùng chạm mọi nút/link trong bảng và thẻ >= 44x44px; thông tin không chỉ dựa vào màu (badge luôn có chữ).
 - Định dạng: giá "199.000 ₫", ngày `dd/MM/yyyy` (`toLocaleDateString('vi-VN')`).
 
+## Thành phần giỏ hàng, đặt hàng, đơn hàng (Sprint 4)
+
+Chỉ dùng token hiện có (không thêm màu). Màn dùng: `screens.md` mục "Giỏ hàng & Đặt hàng".
+
+| Component | File | Mô tả và quy tắc |
+|-----------|------|------------------|
+| CartLink | `components/cart/CartLink.jsx` | Link `/cart` `size-11` icon túi + badge `bg-accent` (ẩn khi 0, "99+"), tên truy cập có số |
+| QuantityStepper | `components/cart/QuantityStepper.jsx` | Nút − / + `size-11` viền `ink/25`, số ở giữa (`aria-live`); dùng `aria-disabled` (không `disabled`) ở biên/đang gửi để giữ focus |
+| AddToCartButton | `components/tryOn/AddToCartButton.jsx` | Nút primary `min-h-12` + icon túi; "Đang thêm…" bằng `aria-disabled`/`aria-busy` |
+| CartLine | `components/cart/CartLine.jsx` | Thẻ dòng giỏ: thumb, tên, đơn giá, stepper (debounce 300 ms), thành tiền, Xoá |
+| CheckoutForm, OrderInfo, OrderItems | `components/cart/` | Form + tóm tắt đơn; thẻ thông tin `dl`; bảng/thẻ dòng đơn (dùng chung người mua và admin) |
+| OrderStatusBadge | `components/OrderStatusBadge.jsx` | Pill chữ + màu: pending `sand`, confirmed `blush`, shipping `ink` chữ trắng, completed `gold/20`, cancelled đỏ nhạt; luôn có chữ |
+| Pagination | `components/Pagination.jsx` | Trước / số trang rút gọn / Sau (`min-h-11`), mobile "Trang n/N"; `aria-current=page`; ẩn khi 1 trang |
+| ProductThumb | `components/ProductThumb.jsx` | Flat lay 3:4 `object-contain`, ảnh null/lỗi -> ô giữ chỗ có chữ |
+| TextAreaField | `components/TextAreaField.jsx` | Cùng kiểu `TextField` cho nhiều dòng |
+| OrderList | `components/admin/OrderList.jsx` | Bảng từ `sm` / thẻ mobile cho danh sách đơn admin |
+| Toast (mở rộng) | `components/ToastProvider.jsx` | `showToast(text, { tone, action: { label, to } })`: thêm liên kết trong toast (vd. "Xem giỏ hàng", 7 giây) |
+| MinusIcon | `components/icons.jsx` | Dấu trừ cùng phong cách |
+
+Quy tắc: tiền `tabular-nums` + `formatVnd`; thông báo cần chú ý (CART_CHANGED) dùng khung `sand` viền `gold` + `role="alert"`; nút đang gửi dùng `aria-disabled`.
+
 ## Accessibility cố định
 
 Semantic landmark (`header`, `nav`, `main`, `footer`), link "Bỏ qua tới nội dung chính", `:focus-visible` toàn cục, vùng chạm >= 44px, không truyền tải thông tin chỉ bằng màu, `lang="vi"`.

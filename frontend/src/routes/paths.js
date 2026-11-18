@@ -10,7 +10,16 @@ export const PATHS = {
   adminCategories: '/admin/categories',
   adminProducts: '/admin/products',
   adminProductNew: '/admin/products/new',
+  cart: '/cart',
+  checkout: '/checkout',
+  order: '/orders/:id',
+  adminOrders: '/admin/orders',
+  adminOrder: '/admin/orders/:id',
 };
+
+export const orderPath = (id) => `/orders/${encodeURIComponent(id)}`;
+
+export const adminOrderPath = (id) => `/admin/orders/${encodeURIComponent(id)}`;
 
 export const adminProductEditPath = (id) => `/admin/products/${encodeURIComponent(id)}/edit`;
 

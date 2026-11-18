@@ -4,6 +4,7 @@ import { PATHS } from '../../routes/paths.js';
 import Logo from '../Logo.jsx';
 import AccountMenu from '../AccountMenu.jsx';
 import AuthLink from '../AuthLink.jsx';
+import CartLink from '../cart/CartLink.jsx';
 import { CloseIcon, MenuIcon } from '../icons.jsx';
 import { NAV_LINKS } from '../../mocks/landingContent.js';
 
@@ -45,6 +46,7 @@ export default function LandingHeader({ user = null, onLogout }) {
               <Link to={PATHS.tryOn} className={linkClass}>
                 Phòng thử đồ
               </Link>
+              <CartLink />
               <AccountMenu user={user} onLogout={onLogout} />
             </>
           ) : (
@@ -59,16 +61,19 @@ export default function LandingHeader({ user = null, onLogout }) {
           )}
         </div>
 
-        <button
-          type="button"
-          className="-mr-2 inline-flex size-11 items-center justify-center rounded-full text-ink hover:bg-ink/5 md:hidden"
-          aria-expanded={open}
-          aria-controls="mobile-menu"
-          aria-label={open ? 'Đóng menu' : 'Mở menu'}
-          onClick={() => setOpen((v) => !v)}
-        >
-          {open ? <CloseIcon /> : <MenuIcon />}
-        </button>
+        <div className="-mr-2 flex items-center md:hidden">
+          {user && <CartLink />}
+          <button
+            type="button"
+            className="inline-flex size-11 items-center justify-center rounded-full text-ink hover:bg-ink/5"
+            aria-expanded={open}
+            aria-controls="mobile-menu"
+            aria-label={open ? 'Đóng menu' : 'Mở menu'}
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? <CloseIcon /> : <MenuIcon />}
+          </button>
+        </div>
       </div>
 
       <div

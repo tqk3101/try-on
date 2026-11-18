@@ -3,7 +3,7 @@
 Người mua thêm sản phẩm vào giỏ ngay trong phòng thử đồ, xem/sửa giỏ với tổng tiền do server tính và đặt hàng (COD, chưa thanh toán online); admin xem danh sách và chi tiết đơn đã đặt. Hoàn thành luồng thương mại cơ bản của Epic 4.
 User Stories: US-07 (thêm vào giỏ ở phòng thử đồ), US-08 (xem giỏ + tổng tiền), **US-10 (đặt hàng từ giỏ – bổ sung ngoài PB, chờ duyệt)**, US-09 (admin xem đơn)
 
-**Trạng thái:** IN PROGRESS (nhánh `feature/US-07-cart`). Task 1 hoàn thành 2026-11-18: thiết kế xong, Q23–Q34 đã chốt và US-10 đã duyệt, migration `010`/`011` đã áp qua MCP và verify. Flow `design/flows/cart-and-orders.md`, contract/mã lỗi/route/D32–D41 ở `design/flows/README.md`, schema `design/database/schema.md` mục 15–17. Task 2–6 chưa bắt đầu.
+**Trạng thái:** IN PROGRESS (nhánh `feature/US-07-cart`). Task 1 hoàn thành 2026-11-18: thiết kế xong, Q23–Q34 đã chốt và US-10 đã duyệt, migration `010`/`011` đã áp qua MCP và verify. Flow `design/flows/cart-and-orders.md`, contract/mã lỗi/route/D32–D41 ở `design/flows/README.md`, schema `design/database/schema.md` mục 15–17. Task 2 (UI mock) hoàn thành 2026-11-18 (lint/build/test 111 xanh, chưa test trình duyệt với backend thật); Task 3–6 chưa bắt đầu.
 
 **Khoảng trống PB đã xử lý:** PB Epic 4 không có story tạo đơn nhưng US-09 cần "đơn hàng đã đặt". Đã thêm **US-10** vào `PB.md` (đánh dấu chờ duyệt) và `sprints/US-10.md` với phạm vi tối thiểu (form giao hàng → đơn `pending`, COD, xoá giỏ, trang xác nhận). Theo quy tắc Scrum của `CLAUDE.md`, mọi thứ ngoài backlog được ghi vào đây trước khi làm.
 
@@ -47,10 +47,10 @@ User Stories: US-07 (thêm vào giỏ ở phòng thử đồ), US-08 (xem giỏ 
 **Mô tả:** Mô tả màn hình và code UI (mock, happy case + đủ trạng thái). Làm sau khi Task 1 chốt contract; song song Task 3–4.
 
 **Công việc:**
-- [ ] Cập nhật `design/screens.md`: nút "Thêm vào giỏ" trong `ProductPanel` (thay comment chỗ chừa; trạng thái default / đang thêm / disabled; toast thành công / đã có / lỗi; không ảnh hưởng phím ←/→ và focus); badge giỏ ở `MainLayout`/`AccountMenu`/`LandingHeader`; mục mới "Giỏ hàng & Đặt hàng" (`/cart`, `/checkout`, `/orders/:id`); mục Admin "Đơn hàng" (`/admin/orders`, `/admin/orders/:id`, menu `AdminLayout` 3 mục); 4 trạng thái loading/rỗng/lỗi/có dữ liệu; responsive 375/768/1280; a11y
-- [ ] Cập nhật `design/design-system.md` nếu thêm component dùng chung (ví dụ `QuantityStepper`, `Pagination`, badge trạng thái đơn, `CartBadge`)
-- [ ] Code UI với mock (`src/mocks/cartMock.js`, `orderMock.js`): `CartProvider` (context badge), trang `CartPage`, `CheckoutPage`, `OrderPage`, `pages/admin/AdminOrdersPage.jsx`, `AdminOrderDetailPage.jsx`; route trong `router.jsx` + `PATHS` (`cart`, `checkout`, `order`, `adminOrders`, `adminOrder`)
-- [ ] Ghi danh sách điểm TODO nối API cụ thể cho agent-coder (common_errors 3.5) ở cuối mục mới của `screens.md` + `TODO(Task5)` trong file API của feature
+- [x] Cập nhật `design/screens.md`: nút "Thêm vào giỏ" trong `ProductPanel` (thay comment chỗ chừa; trạng thái default / đang thêm / disabled; toast thành công / đã có / lỗi; không ảnh hưởng phím ←/→ và focus); badge giỏ ở `MainLayout`/`AccountMenu`/`LandingHeader`; mục mới "Giỏ hàng & Đặt hàng" (`/cart`, `/checkout`, `/orders/:id`); mục Admin "Đơn hàng" (`/admin/orders`, `/admin/orders/:id`, menu `AdminLayout` 3 mục); 4 trạng thái loading/rỗng/lỗi/có dữ liệu; responsive 375/768/1280; a11y
+- [x] Cập nhật `design/design-system.md` nếu thêm component dùng chung (ví dụ `QuantityStepper`, `Pagination`, badge trạng thái đơn, `CartBadge`)
+- [x] Code UI với mock (`src/mocks/cartMock.js`, `orderMock.js`): `CartProvider` (context badge), trang `CartPage`, `CheckoutPage`, `OrderPage`, `pages/admin/AdminOrdersPage.jsx`, `AdminOrderDetailPage.jsx`; route trong `router.jsx` + `PATHS` (`cart`, `checkout`, `order`, `adminOrders`, `adminOrder`)
+- [x] Ghi danh sách điểm TODO nối API cụ thể cho agent-coder (common_errors 3.5) ở cuối mục mới của `screens.md` + `TODO(Task5)` trong file API của feature
 
 **Acceptance Criteria:** `screens.md` khớp `cart-and-orders.md` mục 6–9 và US-07..US-10; UI chạy được với mock ở mọi trạng thái (gồm `CART_CHANGED`, `CART_EMPTY`, `CART_QUANTITY_LIMIT`, `CART_FULL`, 404 đơn, admin lọc rỗng, nhiều trang); nút "Thêm vào giỏ" không làm hỏng điều hướng phòng thử đồ; lint + build sạch; router import trang mới (common_errors 5.2); 375px không cuộn ngang.
 

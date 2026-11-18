@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import { PATHS } from '../../routes/paths.js';
 import { formatVnd } from '../../utils/format.js';
 import { ArrowLeftIcon } from '../icons.jsx';
+import AddToCartButton from './AddToCartButton.jsx';
 
 function QuotaLine({ quota }) {
   if (!quota) return null;
@@ -20,7 +21,7 @@ function QuotaLine({ quota }) {
 /**
  * Cột thông tin: danh mục, vị trí "n/N", tên, giá, flat lay thu nhỏ, hạn mức, danh sách thu nhỏ,
  * thẻ "Đã xem hết" ở sản phẩm cuối. Đổi ngay khi chuyển sản phẩm (không chờ mạng).
- * Chừa chỗ cho nút "Thêm vào giỏ" (US-07, Sprint 4): KHÔNG render nút ở Sprint 3 (Q20).
+ * Nút "Thêm vào giỏ" (US-07, Sprint 4) nằm ngay dưới khối sản phẩm (AddToCartButton).
  */
 export default function ProductPanel({
   category,
@@ -30,6 +31,7 @@ export default function ProductPanel({
   quota,
   products,
   onSelect,
+  onProductMissing,
 }) {
   const isLast = index === total - 1;
   return (
@@ -70,7 +72,7 @@ export default function ProductPanel({
         </div>
       </div>
 
-      {/* US-07 (Sprint 4): nút "Thêm vào giỏ" đặt tại đây. */}
+      <AddToCartButton product={product} category={category} onProductMissing={onProductMissing} />
 
       {total > 1 && (
         <nav aria-label="Sản phẩm trong danh mục" className="mt-6">

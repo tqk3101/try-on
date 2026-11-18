@@ -151,6 +151,14 @@ export function CheckIcon(props) {
   );
 }
 
+export function MinusIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+
 export function ImageIcon(props) {
   return (
     <svg {...base} {...props}>

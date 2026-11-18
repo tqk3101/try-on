@@ -3,7 +3,7 @@
 export const FIELD_ORDER = ['displayName', 'phone', 'heightCm', 'weightKg'];
 
 const DISPLAY_NAME_MAX = 50;
-const PHONE_REGEX = /^0[35789][0-9]{8}$/;
+export const PHONE_REGEX = /^0[35789][0-9]{8}$/;
 const HEIGHT_RANGE = [100, 250];
 const WEIGHT_RANGE = [30, 250];
 

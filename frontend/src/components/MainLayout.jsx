@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router';
 import { useAuth } from '../auth/authContext.js';
 import { PATHS } from '../routes/paths.js';
 import AccountMenu from './AccountMenu.jsx';
+import CartLink from './cart/CartLink.jsx';
 import Logo from './Logo.jsx';
 
 export default function MainLayout() {
@@ -28,6 +29,7 @@ export default function MainLayout() {
                 Phòng thử đồ
               </NavLink>
             )}
+            {user && <CartLink />}
             <AccountMenu user={user} onLogout={logout} />
           </div>
         </nav>

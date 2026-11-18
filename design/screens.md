@@ -185,7 +185,7 @@ Code: `frontend/src/components/AccountMenu.jsx`; gắn vào `MainLayout` và `co
 - **Desktop/tablet (từ 768px):** ở góc phải header, nút pill viền gồm avatar chữ cái đầu (nền accent) + tên (hoặc email, rút gọn). Bấm mở panel dropdown (pattern disclosure: `aria-expanded`, `aria-controls`): dòng email, link "Hồ sơ của tôi" (`/profile`), nút "Đăng xuất" (màu accent-dark). Đóng bằng Esc (trả focus về nút), bấm ra ngoài hoặc chọn mục.
 - **Mobile (< 768px):** ở `LandingHeader`, khối `AccountMenu inline` nằm trong menu hamburger thay cho hai nút auth: "Đăng nhập với {email}", Hồ sơ của tôi, Đăng xuất (hàng cao >= 44px); bấm mục nào cũng đóng menu. Ở `MainLayout` (header chỉ logo) nút pill luôn hiện bên phải.
 - Landing khi đã đăng nhập: không hiện Đăng nhập/Đăng ký.
-- Props: `user` ({ email, displayName }), `onLogout`, `inline`, `onNavigate`. Đã nối `useAuth()` ở `MainLayout` và `LandingPage`. Menu có thêm mục **"Phòng thử đồ"** (`/try-on`, đứng đầu, hiện ở cả dropdown desktop và dạng inline mobile); `MainLayout` còn có link "Phòng thử đồ" (NavLink, `accent` khi đang ở `/try-on*`) cạnh `AccountMenu` từ 640px (dưới 640px chỉ còn trong menu để header không chật ở 375px).
+- Props: `user` ({ email, displayName }), `onLogout`, `inline`, `onNavigate`. Đã nối `useAuth()` ở `MainLayout` và `LandingPage`. Từ Sprint 4 menu có thêm mục **"Giỏ hàng"** (`/cart`, kèm badge số lượng) ngay sau "Phòng thử đồ", và `MainLayout`/`LandingHeader` có icon `CartLink` (xem phần Giỏ hàng & Đặt hàng). Menu có thêm mục **"Phòng thử đồ"** (`/try-on`, đứng đầu, hiện ở cả dropdown desktop và dạng inline mobile); `MainLayout` còn có link "Phòng thử đồ" (NavLink, `accent` khi đang ở `/try-on*`) cạnh `AccountMenu` từ 640px (dưới 640px chỉ còn trong menu để header không chật ở 375px).
 
 ---
 
@@ -216,7 +216,7 @@ Admin. `/admin` (index) `Navigate replace` tới `/admin/categories`.
 ### Các thành phần chính
 1. **Tiêu đề** `h1` "Quản trị".
    - Trạng thái: tĩnh.
-2. **Menu quản trị** `<nav aria-label="Menu quản trị">`: 2 mục dạng pill "Danh mục", "Sản phẩm" (`NavLink`).
+2. **Menu quản trị** `<nav aria-label="Menu quản trị">`: 3 mục dạng pill "Danh mục", "Sản phẩm", "Đơn hàng" (`NavLink`; Sprint 4 thêm "Đơn hàng" -> `/admin/orders`, active cả ở `/admin/orders/:id`).
    - Tương tác: bấm/Enter chuyển trang. Mục đang chọn: nền `accent`, chữ trắng, `aria-current="page"` (NavLink tự gắn). "Sản phẩm" cũng active ở `/admin/products/new` và `/admin/products/:id/edit`.
    - Trạng thái: default / hover (`bg-ink/5`) / focus-visible (outline 2px accent toàn cục) / active. Vùng chạm `min-h-11`.
    - Hiệu ứng: `transition-colors`.
@@ -224,15 +224,15 @@ Admin. `/admin` (index) `Navigate replace` tới `/admin/categories`.
 4. **Link "Quản trị"** trong `AccountMenu` (chỉ khi `role = admin`) dẫn tới `/admin`.
 
 ### Quyết định thiết kế
-- **Không dùng sidebar**: chỉ 2 mục nên menu ngang (tab pill) gọn hơn, không tốn chiều ngang trên tablet/mobile, giữ bố cục một cột của `MainLayout`. Khi Epic 4 thêm "Đơn hàng", có thể chuyển sang sidebar từ `lg` mà không đổi route.
+- **Không dùng sidebar**: chỉ 3 mục (Sprint 4 thêm "Đơn hàng") nên menu ngang (tab pill) vẫn gọn, không tốn chiều ngang trên tablet/mobile, giữ bố cục một cột của `MainLayout`.
 
 ### Responsive
-- Mobile (< 640px): menu một hàng, `overflow-x-auto` nếu hẹp (đủ 2 mục ở 320px); không tràn ngang trang.
+- Mobile (< 640px): menu một hàng, `overflow-x-auto` nếu hẹp (3 mục vừa ở 375px); không tràn ngang trang.
 - Tablet (640–1024px) và Desktop (> 1024px): menu căn trái, đường kẻ `border-b border-line` bên dưới.
 
 ### Navigation
 - Đến màn hình này từ: `AccountMenu` (Quản trị), URL trực tiếp, `/login?redirect=/admin…`.
-- Từ màn hình này đến: `/admin/categories`, `/admin/products`.
+- Từ màn hình này đến: `/admin/categories`, `/admin/products`, `/admin/orders`.
 
 ### Ghi chú
 - A11y: landmark `nav` có nhãn; thứ tự Tab: menu -> nội dung. `/admin/xyz` không tồn tại -> 404 chung (`*`).
@@ -438,7 +438,7 @@ Code: `pages/TryOnCategoriesPage.jsx`, `pages/TryOnRoomPage.jsx`; component `com
 **Quy ước chung của phòng thử đồ**
 - **Câu chữ trạng thái chờ chuẩn hoá (duy nhất):** `Đang thử đồ {tên sản phẩm}…` (có dấu "…"). Dùng cho chữ hiển thị trong khung ảnh và cho thông báo `aria-live`. Các câu cũ "Đang tạo ảnh bạn mặc {tên}…" ở `try-on-room.md` mục 9 (sơ đồ) và `US-05.md` luồng chính bước 4 thay bằng câu này.
 - Giá luôn dạng `199.000 ₫` (`formatVnd`); vị trí `n/N` (vd. `2/6`).
-- Không có nút "Thêm vào giỏ" (Q20; US-07 ở Sprint 4: chỉ chừa chỗ trong `ProductPanel`, có comment) và không có nút xoá toàn bộ ảnh thử đồ (Q22).
+- Nút "Thêm vào giỏ" (US-07, Sprint 4) nằm trong `ProductPanel` (xem mục 5 bên dưới và mục "Giỏ hàng & Đặt hàng"); không có nút xoá toàn bộ ảnh thử đồ (Q22).
 - Không prefetch (Q15): chỉ gửi `POST /api/try-on` cho sản phẩm user dừng lại >= 400 ms (debounce); chỉ poll sản phẩm đang hiển thị.
 - `document.title`: `/try-on` = "Phòng thử đồ — Try-on"; `/try-on/:categoryId` = "Thử đồ: {tên danh mục} — Try-on" (khi chưa tải xong danh mục: "Phòng thử đồ — Try-on").
 - Hạn mức hiển thị "Còn {n} lượt hôm nay" (từ `quota.remaining`, cập nhật theo mỗi response POST và `GET /api/try-on/quota`); `remaining = 0` hiện "Đã hết lượt hôm nay".
@@ -527,7 +527,7 @@ Một `<section aria-label="Phòng thử đồ: {danh mục}">` có `onKeyDown` 
 2. **Cột thông tin** (`ProductPanel`): link "← Chọn danh mục khác" (`/try-on`, `min-h-11`); eyebrow "Phòng thử đồ"; `h1` tên danh mục (Playfair); khối sản phẩm: ảnh **flat lay thu nhỏ** (`aspect-[3/4]`, `w-24`, `object-contain`, `alt="Ảnh trải phẳng {tên}"`), `n/N`, `h2` tên (tối đa vài dòng, `break-words`), giá "199.000 ₫" (`tabular-nums`), badge **"Còn n lượt hôm nay"** (`sand`) / "Đã hết lượt hôm nay" (`blush`, có chữ). Tên/giá/flat lay đổi tức thì khi chuyển sản phẩm (không chờ mạng).
 3. **Danh sách thu nhỏ** (`nav aria-label="Sản phẩm trong danh mục"`, ẩn khi chỉ có 1 sản phẩm): hàng các nút ảnh flat lay `w-14` (`min-h-11`), cuộn ngang **trong** thanh (không làm cuộn ngang trang), sản phẩm hiện tại viền `accent` + `aria-current="true"`; bấm -> chuyển tới sản phẩm đó (cùng debounce). `aria-label` "{tên}, sản phẩm i trên N".
 4. **Thẻ "Đã xem hết"** (chỉ ở sản phẩm cuối): "Bạn đã xem hết {danh mục}", "Đây là sản phẩm cuối cùng. Bấm mũi tên trái để xem lại, hoặc thử danh mục khác." + nút "Chọn danh mục khác" -> `/try-on`. Mũi tên phải `disabled`, vuốt trái không làm gì, **không quay vòng** (Q17); mũi tên trái vẫn dùng được.
-5. **Chỗ chừa cho nút "Thêm vào giỏ"** (US-07, Sprint 4): ngay dưới khối sản phẩm trong `ProductPanel` (chỉ là comment trong code; Sprint 3 không render gì).
+5. **Nút "Thêm vào giỏ"** (US-07, Sprint 4, `AddToCartButton`): ngay dưới khối sản phẩm trong `ProductPanel`. Chi tiết ở mục "Nút Thêm vào giỏ" trong phần Giỏ hàng & Đặt hàng.
 
 ### Trạng thái cấp trang
 - **Đang tải danh sách sản phẩm** (và đang tải hồ sơ): skeleton khung 3:4 + cột thông tin, `role="status"` chữ ẩn "Đang tải phòng thử đồ…".
@@ -583,3 +583,178 @@ Hành vi của `features/tryOn/useTryOnRoom.js`:
 4. **`<img onError>`** -> `GET` lại một lần để lấy `imageUrl` ký mới; vẫn lỗi -> `IMAGE_LOAD_FAILED` (mã chỉ có ở client) + Thử lại (POST lại -> cache hit 200).
 5. **Hồ sơ**: `useTryOnAccess` gọi `fetchProfile` mỗi lần mở `/try-on` hoặc `/try-on/:id` (đọc `tryOnConsentAt`); sau `giveConsent` dùng `profile` trả về, không hỏi lại.
 6. **Đích sau đăng nhập** = `/try-on` (Q19): `GuestOnly` dùng `safeRedirect(redirect) ?? PATHS.tryOn`.
+
+---
+
+# Giỏ hàng & Đặt hàng (Sprint 4 — US-07, US-08, US-10) và Đơn hàng admin (US-09)
+
+Bám `design/flows/cart-and-orders.md` mục 6–9, `design/flows/README.md` (contract, mã lỗi `CART_FULL` / `CART_QUANTITY_LIMIT` / `CART_ITEM_NOT_FOUND` / `CART_EMPTY` / `CART_CHANGED`, `ORDER_NOT_FOUND`, D32–D41, Q23–Q34), `sprints/US-07..US-10.md`. Route mới (trong `RequireAuth` + `MainLayout`; admin thêm `RequireAdmin`): `/cart`, `/checkout`, `/orders/:id`, `/admin/orders`, `/admin/orders/:id`. Admin cũng mua hàng được (Q31).
+
+Trạng thái code: **UI layer + mock** (Sprint 4 Task 2). Dữ liệu qua `features/cart/cartApi.js` và `features/orders/orderApi.js` (điểm nối duy nhất, đang gọi `mocks/cartMock.js`, `mocks/orderMock.js`); giỏ dùng chung qua `features/cart/CartProvider.jsx` (`useCart()`). Mock có cờ kịch bản bằng query `?mock=cờ1,cờ2` (lưu sessionStorage, `?mock=off` để tắt), danh sách cờ ở đầu `mocks/mockFlags.js`.
+
+**Quy ước chung**
+- Tiền là `number` VND, hiển thị `formatVnd`; tiền (thành tiền, tổng) luôn lấy từ server, không tự tính ở client. Mã đơn `DH` + 6 số; ngày `dd/MM/yyyy HH:mm` (`formatOrderDate`).
+- Không cập nhật lạc quan: giỏ/badge chỉ đổi theo `cart` server trả (`applyCart`). Nút đang gửi dùng `aria-disabled` + `aria-busy` (KHÔNG `disabled`) để không mất focus.
+- Mỗi màn có đủ 4 trạng thái: loading (skeleton `role="status"` có chữ ẩn) / rỗng (`EmptyState`) / lỗi (`ErrorState` + Thử lại) / có dữ liệu. Lỗi thao tác nền qua toast `tone: 'error'`.
+- `document.title`: "Giỏ hàng", "Đặt hàng", "Đơn hàng DHxxxxxx", "Quản lý đơn hàng", "Đơn DHxxxxxx" (hậu tố " — Try-on").
+- 401 do `apiClient` xử lý chung. Token hết hạn giữa checkout -> `/login?redirect=/checkout&reason=expired`; quay lại sinh khoá idempotency mới (giỏ còn nguyên).
+
+## Nút "Thêm vào giỏ" và badge giỏ (US-07)
+
+Code: `components/tryOn/AddToCartButton.jsx` (trong `ProductPanel`, ngay dưới khối sản phẩm); `components/cart/CartLink.jsx` (badge).
+
+### Nút "Thêm vào giỏ"
+- Mô tả: nút primary `rounded-full min-h-12` (full width mobile, tự co từ `sm`), icon túi + "Thêm vào giỏ". Dùng sản phẩm **đang hiển thị**, độc lập với trạng thái ảnh thử đồ (đang tạo / lỗi / hết lượt vẫn thêm được).
+- Trạng thái: default; hover (`accent-dark`); focus-visible (outline global); **đang thêm** (theo từng sản phẩm): nhãn "Đang thêm…", `aria-disabled="true"` + `aria-busy`, mờ 70%, bỏ qua click; chuyển sang sản phẩm khác thì nút bấm lại được (request cũ không bị huỷ). Không có trạng thái `disabled` thật.
+- Dòng dưới nút (khi sản phẩm đã có trong giỏ theo `cart` server): "Đã có {n} trong giỏ. Xem giỏ hàng".
+- Kết quả (toast, một toast tại một thời điểm, có liên kết "Xem giỏ hàng" -> `/cart`, giữ 7 giây):
+  - 201 dòng mới: "Đã thêm {tên} vào giỏ."; badge = `cart.itemCount`.
+  - 200 đã có (client suy ra: `item.quantity !== quantity` đã gửi): "{tên} đã có trong giỏ, số lượng: {n}."
+  - 409 `CART_QUANTITY_LIMIT`: toast lỗi "Mỗi sản phẩm chỉ đặt tối đa 10 chiếc."
+  - 409 `CART_FULL`: toast lỗi (message server) + liên kết "Xem giỏ hàng".
+  - 404 `PRODUCT_NOT_FOUND`: toast lỗi + tải lại danh sách sản phẩm (`room.reloadList`).
+  - 429 / 500 / mạng: toast lỗi `error.message`, nút bấm lại được.
+- **Không ảnh hưởng điều hướng phòng thử đồ**: là `<button>` thường (Enter/Space), không bắt phím mũi tên, không dùng `disabled` (tránh mất focus -> ←/→ vẫn bắt được ở vùng phòng thử đồ); không có phím tắt. Đã kiểm tra bằng trình duyệt: bấm nút xong ←/→ vẫn đổi sản phẩm, kể cả khi request còn đang bay; focus vẫn ở nút.
+- Hiệu ứng: `transition-colors`; toast xuất hiện không animation (tôn trọng reduced-motion).
+- Tab order trong `ProductPanel`: link "Chọn danh mục khác" -> nút Thêm vào giỏ -> (link Xem giỏ hàng) -> thanh thu nhỏ.
+
+### Badge giỏ (`CartLink`) và mục "Giỏ hàng" trong `AccountMenu`
+- `CartLink`: icon túi `size-11` (44px) ở header `MainLayout` (mọi cỡ) và `LandingHeader` (desktop cạnh `AccountMenu`; mobile cạnh nút hamburger), chỉ khi đã đăng nhập. Badge tròn `bg-accent` chữ trắng góc trên phải: ẩn khi 0, "99+" khi > 99. Tên truy cập "Giỏ hàng, {n} sản phẩm" (badge `aria-hidden`, nên số không chỉ dựa vào hình).
+- `AccountMenu` (dropdown và inline mobile): mục "Giỏ hàng" (`/cart`) sau "Phòng thử đồ", kèm pill số lượng (chữ `sr-only` "{n} sản phẩm").
+- Nạp: `CartProvider` gọi `GET /api/cart` khi đăng nhập/khôi phục phiên và khi tab lấy lại focus (`visibilitychange`, nạp nền không nháy); cập nhật theo mọi response giỏ; đăng xuất -> xoá state. Nạp lỗi: badge giữ giá trị cũ / ẩn, không toast.
+
+## Giỏ hàng — `/cart`
+
+### Mục đích
+Xem và sửa giỏ (đổi số lượng, xoá dòng), xem tổng tiền, sang đặt hàng. Quyền: đã đăng nhập.
+
+### Các thành phần chính
+1. **Tiêu đề** `h1` "Giỏ hàng" (Playfair, `tabIndex=-1`: nhận focus sau khi xoá một dòng).
+2. **Danh sách dòng** (`ul aria-label="Sản phẩm trong giỏ"`, `CartLine`): thẻ `rounded-2xl border bg-surface p-4`: flat lay 3:4 (`ProductThumb`, `w-20 sm:w-24`, ảnh lỗi/null -> ô giữ chỗ "Không có ảnh"), tên (link tới `/try-on/:categoryId?product=:id`, tối đa 2 dòng, `break-words`), danh mục, đơn giá, `QuantityStepper`, thành tiền (`tabular-nums`, nhãn `sr-only` "Thành tiền"), nút "Xoá".
+   - **Bộ chọn số lượng**: − / + (44px, không ô gõ). "−" `aria-disabled` ở 1, "+" ở `limits.maxQuantity` (10). Bấm đổi số hiển thị ngay, gửi `PUT` sau 300 ms không bấm thêm; trong lúc chờ/gửi dòng hiện "Đang cập nhật…", stepper bị chặn khi đang gửi; thành công -> thay cả giỏ theo server; lỗi -> số lượng khôi phục theo server + toast. 404 `CART_ITEM_NOT_FOUND` -> toast "Sản phẩm không còn trong giỏ." rồi tải lại giỏ.
+   - **Xoá**: nút `accent-dark` có icon + chữ, `aria-label="Xoá {tên} khỏi giỏ hàng"`; không hộp thoại xác nhận; thành công toast "Đã xoá {tên}." và focus về `h1`; đang xoá dòng mờ 60% `aria-busy`.
+3. **Tóm tắt** (`aside aria-label="Tóm tắt giỏ hàng"`, `rounded-3xl shadow-card`, `lg:sticky`): "Số lượng: {itemCount} sản phẩm", **Tổng tiền** (`aria-live="polite"`), ghi chú "Giá có thể thay đổi; giá cuối cùng được chốt khi bạn đặt hàng. Chưa gồm phí vận chuyển.", nút primary "Đặt hàng" (-> `/checkout`), nút outline "Tiếp tục thử đồ" (-> `/try-on`).
+
+### Trạng thái
+| Trạng thái | Hiển thị |
+|-----------|----------|
+| Loading (chưa có giỏ) | Skeleton 3 dòng + khối tóm tắt, `role="status"` "Đang tải giỏ hàng…". Đã có giỏ (từ badge) thì nạp nền, không nháy |
+| Rỗng (`items = []`) | `EmptyState` icon túi "Giỏ hàng trống", "Hãy vào phòng thử đồ, ưng món nào thì thêm vào giỏ." + nút "Vào phòng thử đồ" |
+| Lỗi tải | `ErrorState` "Không tải được giỏ hàng" + `error.message` + Thử lại |
+| Có dữ liệu | Danh sách + tóm tắt |
+
+Sản phẩm bị admin xoá tự biến khỏi giỏ, đổi giá hiện giá mới ở lần nạp sau (không thông báo riêng, Q30). Tên rất dài: cắt 2 dòng, không làm tràn ngang.
+
+### Responsive
+- Mobile (375px): một cột; thẻ dòng: ảnh trái, thông tin phải (stepper và thành tiền cùng hàng, wrap nếu hẹp), tóm tắt dưới danh sách; nút full width. Không cuộn ngang.
+- Tablet (768px): một cột, thẻ rộng hơn. Desktop (1280px): hai cột `1fr | 22rem`, tóm tắt dính khi cuộn.
+
+### Navigation
+- Đến từ: `CartLink`/`AccountMenu`, toast "Xem giỏ hàng", `AddToCartButton`, `/checkout` (giỏ rỗng, "Sửa giỏ hàng", `CART_EMPTY`). Đi tới: `/checkout`, `/try-on`, `/try-on/:categoryId?product=`.
+
+### A11y
+Vùng chạm >= 44px; stepper là `role="group"` có nhãn "Số lượng {tên}", giá trị `aria-live="polite"`; nút `aria-label` có tên sản phẩm; trạng thái bằng chữ.
+
+## Đặt hàng — `/checkout`
+
+### Mục đích
+Nhập thông tin giao hàng và xác nhận đơn (COD). Quyền: đã đăng nhập. Mở trang: sinh `idempotencyKey = crypto.randomUUID()` (state trang), **giữ nguyên khi gửi lại** (lỗi mạng/5xx/bấm lại); tải lại trang hoặc mở lại `/checkout` -> khoá mới.
+
+### Các thành phần chính
+1. **Tiêu đề** `h1` "Đặt hàng" + mô tả.
+2. **Form "Thông tin giao hàng"** (`CheckoutForm`, `noValidate`, `rounded-3xl shadow-card`): Họ tên người nhận (điền sẵn `displayName`, `autoComplete=name`), Số điện thoại (`type=tel inputMode=tel`, điền sẵn `profile.phone`, bắt buộc; chuẩn hoá `+84`/`84` -> `0`, regex `^0[35789][0-9]{8}$`), Địa chỉ giao hàng (textarea 10–500 ký tự, hint), Ghi chú (tuỳ chọn, <= 500). Lỗi hiện dưới từng ô (`aria-invalid`/`aria-describedby`), focus ô lỗi đầu tiên khi gửi. 400 `VALIDATION_ERROR` của server được map vào đúng ô (`error.fields`).
+3. **Thanh toán**: thẻ cố định (không phải input) viền `accent`: dấu tích + "Thanh toán khi nhận hàng (COD)" + giải thích (Q28).
+4. **Tóm tắt đơn** (`aside`, `lg:sticky`): các dòng (thumb, tên, `đơn giá × SL`, thành tiền), link "Sửa giỏ hàng", **Tổng tiền** (`aria-live`), "Chưa gồm phí vận chuyển.", vùng thông báo, nút "Xác nhận đặt hàng". Nút thuộc form qua thuộc tính `form` nên nằm cuối trang trên mobile (ngay sau tổng tiền) mà Enter trong ô vẫn gửi form.
+5. **Thông báo** (`role="alert"` trong tóm tắt): `CART_CHANGED` = khung `sand` viền `gold` "Giỏ hàng vừa thay đổi (giá hoặc sản phẩm). Vui lòng kiểm tra lại trước khi đặt hàng." (hiện sau khi tóm tắt đã cập nhật); lỗi 429/500/mạng = khung đỏ nhạt với `error.message`.
+
+### Hành vi theo kết quả `POST /api/orders`
+- 201/200: badge về 0 (`applyCart` giỏ rỗng), `navigate('/orders/:id', { replace, state: { placed: true } })`.
+- 409 `CART_CHANGED`: tải lại giỏ, tóm tắt/tổng cập nhật, **giữ nguyên dữ liệu form**, rồi hiện banner; bấm xác nhận lại dùng `expectedTotal` mới (cùng `idempotencyKey`).
+- 409 `CART_EMPTY`: toast lỗi, về `/cart` (replace).
+- 400: lỗi theo ô. 429/500/mạng: khung lỗi trên nút, bấm lại dùng CÙNG `idempotencyKey`.
+- Đang gửi: nút "Đang đặt hàng…" `aria-disabled`, các ô `disabled`.
+- Không lưu SĐT/địa chỉ vào hồ sơ (Q27), không lưu form vào `localStorage`.
+
+### Trạng thái
+Loading: skeleton "Đang tải thông tin đặt hàng…" (giỏ + hồ sơ song song; lỗi hồ sơ không chặn, chỉ không điền sẵn). Giỏ rỗng: `navigate('/cart', { replace })` (thấy EmptyState ở `/cart`). Lỗi tải giỏ: `ErrorState` "Không tải được thông tin đặt hàng" + Thử lại. Có dữ liệu: form + tóm tắt.
+
+### Responsive
+Mobile: một cột (form -> thanh toán -> tóm tắt + nút). Desktop (>= 1024px): `1fr | 24rem`, tóm tắt dính. 375px không cuộn ngang.
+
+### Navigation
+Đến từ `/cart`, URL trực tiếp. Đi tới `/orders/:id`, `/cart`.
+
+## Xác nhận đơn — `/orders/:id`
+
+### Mục đích
+Xem đơn của chính mình; là trang "Đặt hàng thành công". Quyền: đã đăng nhập, chỉ chủ đơn (đơn người khác = 404, không lộ).
+
+### Các thành phần chính
+1. **Tiêu đề**: khi đến từ `/checkout` (router state `placed`): khối `blush` dấu tích + `h1` "Đặt hàng thành công" + "Mã đơn của bạn là DHxxxxxx. Bạn thanh toán khi nhận hàng."; vào lại: `h1` "Đơn hàng DHxxxxxx". `h1` nhận focus khi tải xong. (Reload giữ `placed` vì nằm trong history state; chấp nhận được.)
+2. **Thông tin đơn** (`OrderInfo`, `dl`): Mã đơn, Ngày đặt, Trạng thái (`OrderStatusBadge` "Chờ xử lý"), Thanh toán (COD), Người nhận, SĐT, Địa chỉ, Ghi chú ("Không có" khi rỗng).
+3. **Sản phẩm** (`OrderItems`): bảng từ `sm` (Ảnh, Sản phẩm + danh mục, Đơn giá, SL, Thành tiền, hàng tổng), thẻ trên mobile + khối tổng. Dùng snapshot tên/giá lúc đặt. `productId = null` -> ô giữ chỗ + nhãn "Sản phẩm đã ngừng bán".
+4. Nút "Tiếp tục thử đồ" (`/try-on`).
+
+### Trạng thái
+Loading: skeleton "Đang tải đơn hàng…". 404 `ORDER_NOT_FOUND`: `EmptyState` "Không tìm thấy đơn hàng" + "Vào phòng thử đồ". Lỗi: `ErrorState` + Thử lại. Có dữ liệu như trên.
+
+### Responsive
+Một cột mọi cỡ trong `max-w-5xl`; bảng chuyển thẻ dưới 640px; 375px không cuộn ngang.
+
+## Admin: Đơn hàng — `/admin/orders`
+
+Quyền: Admin (`RequireAuth` -> `RequireAdmin`; user thường `ForbiddenPage`; 403 giữa phiên -> `ForbiddenPage`). Trong `AdminLayout` (menu 3 pill; "Đơn hàng" active cả ở chi tiết). Chỉ xem (Q29).
+
+### Các thành phần chính
+1. `h2` "Đơn hàng" (`tabIndex=-1`) + mô tả.
+2. **Bộ lọc trạng thái** (`SelectField`: Tất cả trạng thái / Chờ xử lý / Đã xác nhận / Đang giao / Hoàn tất / Đã huỷ) + dòng đếm `aria-live` "{n} đơn" / "Đang tải…". Trạng thái ở URL `?status=&page=`; đổi lọc đặt lại trang 1 (push history).
+3. **Danh sách** (`OrderList`): bảng từ `sm` — Mã đơn (link, `tabular-nums`), Ngày đặt, Khách hàng (tên + email, `break-all`), Người nhận (từ `lg`), Số món, Tổng tiền, Trạng thái (`OrderStatusBadge`: chữ + màu); thẻ trên mobile. **Không có SĐT/địa chỉ/ghi chú** (chỉ ở chi tiết). Mới nhất trước.
+4. **Phân trang** (`Pagination`, 20 đơn/trang): "Trang trước" / dãy số rút gọn (từ `sm`) / "Trang sau"; mobile "Trang n/N". Nút `aria-disabled`, trang hiện tại `aria-current="page"`. Đổi trang: push `?page=n`, cuộn lên đầu và focus `h2`. Ẩn khi chỉ 1 trang.
+
+### Trạng thái
+| Trạng thái | Hiển thị |
+|-----------|----------|
+| Loading (lần đầu, đổi lọc/trang) | Skeleton 5 hàng `role="status"` "Đang tải đơn hàng…" |
+| Rỗng, không lọc | `EmptyState` "Chưa có đơn hàng nào" |
+| Rỗng khi lọc | `EmptyState` "Không có đơn ở trạng thái này" + nút "Xem tất cả" |
+| Lỗi | `ErrorState` "Không tải được đơn hàng" + Thử lại |
+| Có dữ liệu | Bảng/thẻ + phân trang |
+
+Tham số URL sai (`status` lạ, `page` không phải số dương) hoặc 400 từ server: bỏ tham số (replace) và tải lại. `page` vượt `totalPages` (server trả `orders: []`): nhảy về trang cuối (replace).
+
+### Responsive
+Mobile (375px): thẻ; Tablet (768px): bảng 6 cột (ẩn "Người nhận"); Desktop (1280px): bảng đủ 7 cột. Không cuộn ngang trang.
+
+### Navigation
+Đến từ menu admin. Đi tới `/admin/orders/:id` (link mang `state.listSearch` để quay lại đúng `?status&page`).
+
+## Admin: Chi tiết đơn — `/admin/orders/:id`
+
+### Các thành phần chính
+1. Link "← Danh sách đơn hàng" (về `/admin/orders` + `?status&page` đã giữ trong `location.state.listSearch`, không có thì `/admin/orders`) và `h2` "Đơn hàng DHxxxxxx".
+2. `OrderInfo` (cùng trang người mua, thêm dòng **Khách hàng**: tên + email) với đủ SĐT, địa chỉ, ghi chú.
+3. `OrderItems`: bảng/thẻ dòng (snapshot), dòng sản phẩm đã xoá có nhãn "Sản phẩm đã ngừng bán" (không link), tổng tiền.
+- Không có nút đổi trạng thái (Q29).
+
+### Trạng thái
+Loading skeleton "Đang tải đơn hàng…"; 404 `ORDER_NOT_FOUND`: `EmptyState` "Không tìm thấy đơn hàng" + "Về danh sách đơn"; 403: `ForbiddenPage`; lỗi: `ErrorState` + Thử lại; có dữ liệu như trên. `h2` nhận focus khi tải xong.
+
+### Responsive
+Một cột; bảng dòng chuyển thẻ dưới 640px; 375px không cuộn ngang.
+
+## Điểm TODO nối API cho agent-coder (Sprint 4 Task 5)
+
+Mọi `TODO(Task5)` nằm ở hai file API; thay thân hàm bằng `apiClient`, giữ chữ ký và giá trị trả về (shape đúng `cart-and-orders.md` mục 2), rồi xoá mock.
+
+| File / hàm | Endpoint | Trả về | Ghi chú |
+|------------|----------|--------|---------|
+| `features/cart/cartApi.js` `getCart({ signal })` | `GET /api/cart` | `{ cart }` | `CartProvider.refresh`, `CartPage`, `CheckoutPage` |
+| `addCartItem(productId, quantity, hint)` | `POST /api/cart/items { productId, quantity }` | `{ cart, item, created }` | `created` suy ra `item.quantity === quantity` (apiClient không trả 201/200); **bỏ tham số `hint`** (chỉ cho mock). Dùng ở `AddToCartButton` |
+| `updateCartItem(productId, quantity)` | `PUT /api/cart/items/:productId { quantity }` | `{ cart }` | `CartPage.handleUpdate`; 404 `CART_ITEM_NOT_FOUND` đã xử lý |
+| `removeCartItem(productId)` | `DELETE /api/cart/items/:productId` | `{ cart }` | `CartPage.handleRemove` |
+| `features/orders/orderApi.js` `placeOrder(body)` | `POST /api/orders` | `{ order }` | `CheckoutPage.handleSubmit`; body `{ idempotencyKey, recipientName, phone, shippingAddress, note, expectedTotal }` (note có thể `null`) |
+| `getOrder(id, { signal })` | `GET /api/orders/:id` | `{ order }` | `OrderPage`; 404 -> EmptyState |
+| `adminListOrders({ status, page, pageSize, signal })` | `GET /api/admin/orders?status&page&pageSize` | `{ orders, pagination }` | `AdminOrdersPage`; chỉ đưa tham số có giá trị vào query |
+| `adminGetOrder(id, { signal })` | `GET /api/admin/orders/:id` | `{ order }` | `AdminOrderDetailPage` (có thể chuyển 2 hàm admin sang `services/adminApi.js`) |
+
+Việc cần làm khi nối: (1) xoá `src/mocks/cartMock.js`, `orderMock.js`, `mockFlags.js`; `grep` đảm bảo sạch `cartMock|orderMock|mockFlags|hasMockFlag|?mock=`. (2) `profile` ở checkout lấy từ `services/userApi.fetchProfile` (API thật, đã có). (3) Kiểm tra `error.code`/`error.fields` đúng README (đã dùng sẵn: `CART_FULL`, `CART_QUANTITY_LIMIT`, `CART_ITEM_NOT_FOUND`, `CART_EMPTY`, `CART_CHANGED`, `PRODUCT_NOT_FOUND`, `ORDER_NOT_FOUND`, `VALIDATION_ERROR`). (4) Thêm test: `CartProvider` (badge, xoá khi logout), checkout giữ `idempotencyKey` khi gửi lại, `CART_CHANGED` giữ form (đã có test đơn vị cho validate, stepper, phân trang). (5) Chưa làm (cố ý): nút "Thêm vào giỏ" không tự vô hiệu khi đã đủ 10 trong giỏ (dựa vào 409); `PRODUCT_NOT_FOUND` ở phòng thử đồ tải lại danh sách nhưng chưa giữ vị trí gần nhất (`reloadList` về sản phẩm đầu).

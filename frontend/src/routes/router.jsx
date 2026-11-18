@@ -2,12 +2,17 @@ import { createBrowserRouter, Navigate } from 'react-router';
 import AdminLayout from '../components/admin/AdminLayout.jsx';
 import AuthLayout from '../components/AuthLayout.jsx';
 import MainLayout from '../components/MainLayout.jsx';
+import CartPage from '../pages/CartPage.jsx';
+import CheckoutPage from '../pages/CheckoutPage.jsx';
 import LandingPage from '../pages/LandingPage.jsx';
 import LoginPage from '../pages/LoginPage.jsx';
+import AdminOrderDetailPage from '../pages/admin/AdminOrderDetailPage.jsx';
+import AdminOrdersPage from '../pages/admin/AdminOrdersPage.jsx';
 import AdminCategoriesPage from '../pages/admin/AdminCategoriesPage.jsx';
 import AdminProductFormPage from '../pages/admin/AdminProductFormPage.jsx';
 import AdminProductsPage from '../pages/admin/AdminProductsPage.jsx';
 import NotFoundPage from '../pages/NotFoundPage.jsx';
+import OrderPage from '../pages/OrderPage.jsx';
 import ProfilePage from '../pages/ProfilePage.jsx';
 import RegisterPage from '../pages/RegisterPage.jsx';
 import TryOnCategoriesPage from '../pages/TryOnCategoriesPage.jsx';
@@ -44,6 +49,9 @@ const router = createBrowserRouter([
               { path: PATHS.profile, Component: ProfilePage },
               { path: PATHS.tryOn, Component: TryOnCategoriesPage },
               { path: PATHS.tryOnRoom, Component: TryOnRoomPage },
+              { path: PATHS.cart, Component: CartPage },
+              { path: PATHS.checkout, Component: CheckoutPage },
+              { path: PATHS.order, Component: OrderPage },
               {
                 Component: RequireAdmin,
                 children: [
@@ -59,6 +67,8 @@ const router = createBrowserRouter([
                       { path: 'products', Component: AdminProductsPage },
                       { path: 'products/new', Component: AdminProductFormPage },
                       { path: 'products/:id/edit', Component: AdminProductFormPage },
+                      { path: 'orders', Component: AdminOrdersPage },
+                      { path: 'orders/:id', Component: AdminOrderDetailPage },
                     ],
                   },
                 ],

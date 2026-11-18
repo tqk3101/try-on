@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router';
+import { useCart } from '../features/cart/cartContext.js';
 import { PATHS } from '../routes/paths.js';
+import { formatBadgeCount } from './cart/formatBadgeCount.js';
 
 const itemClass =
   'flex min-h-11 w-full items-center rounded-xl px-3 text-left text-sm font-medium text-ink transition-colors hover:bg-ink/5';
@@ -15,6 +17,7 @@ export default function AccountMenu({ user, onLogout, inline = false, onNavigate
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const panelId = useId();
+  const { itemCount } = useCart();
 
   useEffect(() => {
     if (!open) return undefined;
@@ -57,6 +60,22 @@ export default function AccountMenu({ user, onLogout, inline = false, onNavigate
         }}
       >
         Phòng thử đồ
+      </Link>
+      <Link
+        to={PATHS.cart}
+        className={`${itemClass} justify-between`}
+        onClick={() => {
+          setOpen(false);
+          onNavigate?.();
+        }}
+      >
+        Giỏ hàng
+        {itemCount > 0 && (
+          <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-accent px-1.5 text-xs font-semibold leading-6 text-white tabular-nums">
+            <span className="sr-only">{itemCount} sản phẩm</span>
+            <span aria-hidden="true">{formatBadgeCount(itemCount)}</span>
+          </span>
+        )}
       </Link>
       <Link
         to={PATHS.profile}

@@ -126,6 +126,7 @@ function TryOnRoom({ categoryId, access }) {
           quota={room.quota}
           products={room.products}
           onSelect={room.goTo}
+          onProductMissing={room.reloadList}
         />
       </div>
     </section>
