@@ -18,3 +18,4 @@
 - **US-07:** Là Người mua, tôi muốn bấm "Thêm vào giỏ" ngay trên màn hình đang xem thử đồ.
 - **US-08:** Là Người mua, tôi muốn xem giỏ hàng và tổng tiền.
 - **US-09:** Là Admin, tôi muốn xem danh sách đơn hàng đã đặt.
+- **US-10 (bổ sung 2026-11-18, ĐÃ ĐƯỢC NGƯỜI DÙNG DUYỆT 2026-11-18 – Q24):** Là Người mua, tôi muốn đặt hàng từ giỏ (nhập người nhận, số điện thoại, địa chỉ; thanh toán khi nhận hàng) để đơn được ghi nhận. *Lý do bổ sung: US-09 cần "đơn hàng đã đặt" nhưng PB chưa có story tạo đơn.*

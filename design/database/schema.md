@@ -1,6 +1,6 @@
 # Thiết kế Database & Storage
 
-> Phạm vi hiện tại: **Sprint 1** (US-01, US-02) + **Sprint 2** (US-03 danh mục, US-04 sản phẩm) + **Sprint 3 – thiết kế** (US-05, US-06 phòng thử đồ). Migrations: `migrations/001` → `009` (`004` cột `phone`, `005` grant `service_role` – áp 2026-11-03; `006` bảng `categories`/`products` + seed 3 danh mục, `007` bucket `products` – áp 2026-11-03; `008` bảng `try_on_results` + cột `profiles.try_on_consent_at`, `009` bucket `try-on-results` – **đã áp qua MCP 2026-11-17**).
+> Phạm vi hiện tại: **Sprint 1** (US-01, US-02) + **Sprint 2** (US-03 danh mục, US-04 sản phẩm) + **Sprint 3 – thiết kế** (US-05, US-06 phòng thử đồ). Migrations: `migrations/001` → `009` (`004` cột `phone`, `005` grant `service_role` – áp 2026-11-03; `006` bảng `categories`/`products` + seed 3 danh mục, `007` bucket `products` – áp 2026-11-03; `008` bảng `try_on_results` + cột `profiles.try_on_consent_at`, `009` bucket `try-on-results` – **đã áp qua MCP 2026-11-17**) + **Sprint 4 – thiết kế đề xuất** (US-07/08 giỏ hàng, US-10 đặt hàng, US-09 đơn hàng admin): `010` bảng `cart_items`, `011` bảng `orders`, `order_items` + hàm `place_order` – **ĐÃ ÁP 2026-11-18** (chờ chốt Q23–Q34, `design/flows/README.md` mục 7).
 
 ## Mục lục
 1. [Nguyên tắc kiến trúc](#1-nguyên-tắc-kiến-trúc)
@@ -17,6 +17,9 @@
 12. [Storage: bucket `products` (Sprint 2)](#12-storage-bucket-products-sprint-2)
 13. [Bảng `try_on_results` + cột `profiles.try_on_consent_at` (Sprint 3)](#13-bảng-try_on_results--cột-profilestry_on_consent_at-sprint-3)
 14. [Storage: bucket `try-on-results` (Sprint 3)](#14-storage-bucket-try-on-results-sprint-3)
+15. [Bảng `cart_items` (Sprint 4)](#15-bảng-cart_items-sprint-4)
+16. [Bảng `orders` (Sprint 4)](#16-bảng-orders-sprint-4)
+17. [Bảng `order_items` + hàm `place_order` (Sprint 4)](#17-bảng-order_items--hàm-place_order-sprint-4)
 
 ## 1. Nguyên tắc kiến trúc
 
@@ -94,6 +97,47 @@ erDiagram
     PROFILES ||--o{ TRY_ON_RESULTS : "sở hữu (Sprint 3)"
     PRODUCTS ||--o{ TRY_ON_RESULTS : "được thử (Sprint 3)"
     TRY_ON_RESULTS ||--o| STORAGE_OBJECTS_TRY_ON : "result_path trỏ tới (logic, không FK)"
+
+    CART_ITEMS {
+        uuid profile_id PK,FK "ON DELETE CASCADE"
+        uuid product_id PK,FK "ON DELETE CASCADE"
+        smallint quantity "1-10"
+        timestamptz created_at "thời điểm thêm"
+        timestamptz updated_at "trigger"
+    }
+    ORDERS {
+        uuid id PK
+        bigint order_number UK "identity, mã DH000123"
+        uuid profile_id FK "ON DELETE RESTRICT"
+        uuid idempotency_key "unique theo profile_id"
+        text status "pending | confirmed | shipping | completed | cancelled"
+        text payment_method "cod"
+        text recipient_name "1-100"
+        text phone "0xxxxxxxxx"
+        text shipping_address "10-500"
+        text note "nullable, <= 500"
+        integer item_count "> 0"
+        bigint total_amount "VND, server tính"
+        timestamptz created_at
+        timestamptz updated_at "trigger"
+    }
+    ORDER_ITEMS {
+        uuid id PK
+        uuid order_id FK "ON DELETE CASCADE"
+        uuid product_id FK "nullable, ON DELETE SET NULL"
+        text product_name "snapshot"
+        text category_name "snapshot, nullable"
+        integer unit_price "snapshot VND > 0"
+        smallint quantity "1-10"
+        bigint line_total "generated = unit_price * quantity"
+        smallint position "thứ tự trong đơn"
+        timestamptz created_at
+    }
+    PROFILES ||--o{ CART_ITEMS : "giỏ (Sprint 4)"
+    PRODUCTS ||--o{ CART_ITEMS : "nằm trong giỏ"
+    PROFILES ||--o{ ORDERS : "đặt (Sprint 4)"
+    ORDERS ||--|{ ORDER_ITEMS : "gồm"
+    PRODUCTS |o--o{ ORDER_ITEMS : "tham chiếu (SET NULL khi xoá)"
 ```
 
 `PROFILES` thêm cột `try_on_consent_at timestamptz` nullable ở migration `008` (Sprint 3, đã áp 2026-11-17).
@@ -154,6 +198,7 @@ Path có timestamp thay vì ghi đè `avatar.<ext>` để: tránh cache trình d
 - **`service_role` cần GRANT mức bảng**: bypass RLS không thay thế GRANT. Project Supabase này không tự cấp quyền cho bảng mới, nên migration `005` cấp `select, insert, update, delete` trên `profiles` cho `service_role`. **Mọi bảng mới ở sprint sau phải có `grant ... to service_role` trong migration tạo bảng** (và không cấp cho `anon`/`authenticated`).
 - `try_on_results` (migration `008`, Sprint 3, đã áp 2026-11-17): cùng mô hình – RLS bật, 0 policy, REVOKE anon/authenticated, GRANT `service_role` trong migration tạo bảng. Mọi truy vấn của backend lọc `profile_id = sub` (kể cả GET theo id: không thuộc user → 404).
 - `categories`, `products` (migration `006`): cùng mô hình – RLS bật, 0 policy, `REVOKE ALL` anon/authenticated, `GRANT select, insert, update, delete` cho `service_role` ngay trong migration tạo bảng. Đã verify 2026-11-03: `service_role` có quyền (project còn tự gán thêm `REFERENCES/TRIGGER/TRUNCATE`, giống `profiles`), anon/authenticated không có dòng nào.
+- `cart_items`, `orders`, `order_items` (migration `010`, `011`, Sprint 4 – **đã áp 2026-11-18**): cùng mô hình (RLS bật, 0 policy, REVOKE anon/authenticated, GRANT `service_role` trong migration tạo bảng; sequence identity của `orders.order_number` cũng chỉ cấp `service_role`). Mọi truy vấn người mua lọc `profile_id = sub`. Hàm `public.place_order`: `SECURITY INVOKER`, `search_path = ''`, **REVOKE EXECUTE khỏi `public, anon, authenticated`** (Postgres mặc định cấp EXECUTE cho `PUBLIC`), chỉ GRANT `service_role`. Verify sau khi áp: `has_function_privilege('anon', 'public.place_order(uuid,uuid,text,text,text,text,bigint)', 'execute')` = false.
 - `storage.objects` (bucket `avatars`, `products`, `try-on-results`): **không tạo policy** cho anon/authenticated → chỉ service role upload/đọc/xoá; bucket private nên không có URL public.
 - Service role key chỉ nằm trong `backend/.env`, không bao giờ gửi về frontend hay log.
 - Dữ liệu nhạy cảm (ảnh toàn thân, chiều cao, cân nặng): không log, chỉ trả cho chính chủ (lọc theo `id = sub` của JWT).
@@ -190,6 +235,16 @@ API dùng `camelCase`, DB dùng `snake_case`. API contract chi tiết: `design/f
 | `error.code` (response `TryOn`) | `try_on_results.error_code` | `TryOn` khi `failed` | |
 | `simulated` (response) | `try_on_results.provider = 'stub'` | `TryOn` | Không trả tên provider |
 | `completedAt` | `try_on_results.completed_at` | `TryOn` | |
+| `productId`, `quantity`, `addedAt` | `cart_items.product_id`, `quantity`, `created_at` | `CartItem` (Sprint 4) | `price`, `name`, `imageUrl`, `category` join `products`/`categories` lúc đọc |
+| `lineTotal`, `total`, `itemCount`, `lineCount` | tính từ `cart_items` × `products.price` | `Cart` | Không có cột; server tính mỗi lần đọc |
+| `code` | `orders.order_number` | `Order`, `AdminOrderSummary` | `DH` + đệm 6 chữ số; không trả `order_number` thô |
+| `status`, `paymentMethod` | `orders.status`, `payment_method` | `Order` | |
+| `recipientName`, `phone`, `shippingAddress`, `note` | `orders.recipient_name`, `phone`, `shipping_address`, `note` | `Order`, `AdminOrder` | Dữ liệu cá nhân: **không** có trong `AdminOrderSummary` |
+| `total` (đơn), `itemCount` (đơn) | `orders.total_amount`, `item_count` | `Order`, `AdminOrderSummary` | `bigint` → number JSON |
+| `idempotencyKey` (request) | `orders.idempotency_key` | `POST /api/orders` | Không trả ra response |
+| `expectedTotal` (request) | – (tham số `p_expected_total` của `place_order`) | `POST /api/orders` | Chỉ để so khớp, không ghi |
+| `name`, `categoryName`, `unitPrice`, `lineTotal` (dòng đơn) | `order_items.product_name`, `category_name`, `unit_price`, `line_total` | `OrderItem` | Snapshot; `imageUrl` ký từ `products.image_path` nếu `product_id` còn |
+| `customer` | join `profiles` (`id, email, display_name`) | `AdminOrder`, `AdminOrderSummary` | Chỉ API admin |
 
 ## 7. Seed (dev)
 
@@ -231,7 +286,7 @@ File `migrations/003_seed_profiles.sql`. **Chỉ dùng dev/test, không chạy p
 Chỉ ghi nhận hướng, **chưa tạo**:
 - **Epic 2:** đã thiết kế và tạo ở Sprint 2 – xem mục 10–12 (quyết định cuối cùng khác hướng ban đầu: giá `integer`, cột `image_path`, không `is_active`, bucket private).
 - **Epic 3:** đã thiết kế ở Sprint 3 – xem mục 13–14 (khác hướng ban đầu: khoá cache là `input_key` băm cả provider/model/phiên bản prompt/ảnh sản phẩm thay vì chỉ `avatar_path`; unique index **một phần** cho `succeeded` và job đang chạy; thêm cột `profiles.try_on_consent_at`).
-- **Epic 4:** `cart_items` (profile_id, product_id, quantity), `orders`, `order_items` (giá snapshot).
+- **Epic 4:** đã thiết kế ở Sprint 4 (đã áp 2026-11-18) – xem mục 15–17 (khác hướng ban đầu: PK ghép thay cho id riêng ở `cart_items`; `order_items` snapshot cả tên/danh mục, `product_id` SET NULL; tổng `bigint`; hàm `place_order` cho transaction).
 - Dùng lại `public.set_updated_at()` cho bảng mới; giữ nguyên tắc RLS bật + không policy + revoke anon/authenticated + **grant `service_role`**.
 
 ## 10. Bảng `categories` (Sprint 2)
@@ -365,3 +420,104 @@ Migration `009_create_try_on_results_bucket.sql` – **ĐÃ ÁP 2026-11-17**.
 | FK cascade | `ON DELETE CASCADE` tới `profiles`, `products` | Kết quả vô nghĩa khi người/sản phẩm mất; khác `categories → products` (RESTRICT) vì không có rủi ro mất dữ liệu nghiệp vụ. Object phải dọn bằng code |
 | Snapshot path đầu vào | Có (`avatar_path`, `product_image_path`) | Job chạy sau khi request trả về; đọc đúng ảnh tại thời điểm yêu cầu; dọn theo ảnh cũ |
 | Đồng ý xử lý ảnh | Cột `profiles.try_on_consent_at` | Ảnh toàn thân gửi tới Google Gemini API (bên thứ ba) cần đồng ý rõ ràng, lưu thời điểm để kiểm chứng (Q14) |
+
+## 15. Bảng `cart_items` (Sprint 4)
+
+Migration `010_create_cart_items.sql` – **ĐÃ ÁP 2026-11-18** (viết 2026-11-18; chờ chốt Q23, Q25, Q26, Q33). Flow: `design/flows/cart-and-orders.md` mục 4, 6, 7.
+
+| Cột | Kiểu | Null | Mặc định | Ràng buộc / ghi chú |
+|-----|------|------|----------|---------------------|
+| `profile_id` | `uuid` | không | | PK (cùng `product_id`); FK → `profiles.id` `ON DELETE CASCADE` |
+| `product_id` | `uuid` | không | | PK; FK → `products.id` `ON DELETE CASCADE` (sản phẩm bị xoá tự rời giỏ, Q30) |
+| `quantity` | `smallint` | không | `1` | CHECK 1–10 (`cart_items_quantity_range`) |
+| `created_at` | `timestamptz` | không | `now()` | Thời điểm thêm lần đầu; sắp xếp giỏ `created_at desc, product_id` |
+| `updated_at` | `timestamptz` | không | `now()` | Trigger `cart_items_set_updated_at` |
+
+**Không có cột giá**: giá/tổng luôn tính từ `products.price` hiện tại (D34).
+
+**Indexes**
+- `cart_items_pkey` (`profile_id, product_id`): đọc giỏ theo user (cột đầu), một dòng mỗi sản phẩm, bắt `23505` khi 2 tab cùng thêm.
+- `cart_items_product_id_idx` (`product_id`): FK cascade khi admin xoá sản phẩm.
+
+**Quy tắc backend**
+- POST thêm: sản phẩm phải tồn tại (404 `PRODUCT_NOT_FOUND`; `23503` khi race cũng → 404); có dòng → `UPDATE … SET quantity = quantity + n WHERE … AND quantity + n <= 10` (0 dòng → 409 `CART_QUANTITY_LIMIT`); chưa có → đếm dòng (≥ 50 → 409 `CART_FULL`) rồi INSERT; INSERT `23505` → chuyển sang UPDATE cộng dồn. Giới hạn 50 dòng là **mềm** (race có thể dư 1–2 dòng, chấp nhận). supabase-js không biểu diễn được `quantity = quantity + n` nên cộng dồn là **đọc rồi ghi có điều kiện** (optimistic): `UPDATE … SET quantity = cũ + n WHERE profile_id, product_id AND quantity = cũ`; 0 dòng (tab khác vừa đổi) → đọc lại và lặp tối đa 3 lần; dòng biến mất → coi như chưa có (INSERT); hết lượt lặp → 500 (hiếm, log). Không thêm hàm SQL cho giỏ.
+- `23514` (CHECK quantity) → 400 `VALIDATION_ERROR` (lớp cuối; validate trước).
+- Đọc giỏ: join `products(id, name, price, image_path, category:categories(id, name))`, ký URL theo lô (`signUrls`), không trả `image_path`.
+
+## 16. Bảng `orders` (Sprint 4)
+
+Migration `011_create_orders.sql` – **ĐÃ ÁP 2026-11-18** (chờ chốt Q24, Q27–Q29). Chứa **dữ liệu cá nhân** (tên, SĐT, địa chỉ).
+
+| Cột | Kiểu | Null | Mặc định | Ràng buộc / ghi chú |
+|-----|------|------|----------|---------------------|
+| `id` | `uuid` | không | `gen_random_uuid()` | PK; dùng trên URL/API |
+| `order_number` | `bigint` | không | identity (`generated always`) | UNIQUE; mã hiển thị `DH` + đệm 6 chữ số (D41) |
+| `profile_id` | `uuid` | không | | FK → `profiles.id` **`ON DELETE RESTRICT`** (không âm thầm mất lịch sử đơn; dọn user test phải xoá đơn trước) |
+| `idempotency_key` | `uuid` | không | | UNIQUE (`profile_id, idempotency_key`) – `orders_idempotency_unique` (D36) |
+| `status` | `text` | không | `'pending'` | CHECK `pending/confirmed/shipping/completed/cancelled`; Sprint 4 chỉ tạo `pending` (Q29) |
+| `payment_method` | `text` | không | `'cod'` | CHECK `in ('cod')` (Q28); thêm phương thức = migration mới |
+| `recipient_name` | `text` | không | | Đã trim, 1–100 |
+| `phone` | `text` | không | | CHECK `^0[35789][0-9]{8}$` (như `profiles_phone_format`) |
+| `shipping_address` | `text` | không | | Đã trim, 10–500 |
+| `note` | `text` | có | | Nếu có: đã trim, 1–500 |
+| `item_count` | `integer` | không | | Σ quantity, > 0 |
+| `total_amount` | `bigint` | không | | VND, > 0; = Σ `order_items.line_total` (do `place_order` tính) |
+| `created_at` | `timestamptz` | không | `now()` | |
+| `updated_at` | `timestamptz` | không | `now()` | Trigger `orders_set_updated_at` (dùng khi admin đổi trạng thái ở sprint sau) |
+
+**Indexes**
+- `orders_status_created_idx` (`status, created_at desc, id desc`): admin lọc theo trạng thái + phân trang.
+- `orders_created_idx` (`created_at desc, id desc`): admin không lọc.
+- `orders_profile_created_idx` (`profile_id, created_at desc`): đơn của người mua (Q34, sprint sau) và kiểm tra FK RESTRICT khi xoá profile.
+- `orders_idempotency_unique`, `orders_order_number_unique` (do constraint tạo).
+
+**Quy tắc backend**
+- Chỉ tạo đơn qua `rpc('place_order')` (mục 17); không INSERT `orders` trực tiếp.
+- Người mua: `GET /api/orders/:id` lọc `id = :id AND profile_id = sub` → không có → 404 `ORDER_NOT_FOUND`.
+- Admin danh sách: select cột tường minh **không** gồm `phone`, `shipping_address`, `note`; `count: 'exact'` + `.range((page-1)*pageSize, page*pageSize-1)`; join `profiles(id, email, display_name)`.
+- Không trả `profile_id`, `idempotency_key`, `order_number` thô; không log các cột dữ liệu cá nhân.
+
+## 17. Bảng `order_items` + hàm `place_order` (Sprint 4)
+
+Migration `011_create_orders.sql` – **ĐÃ ÁP 2026-11-18** (chờ chốt Q30, Q32).
+
+| Cột | Kiểu | Null | Mặc định | Ràng buộc / ghi chú |
+|-----|------|------|----------|---------------------|
+| `id` | `uuid` | không | `gen_random_uuid()` | PK |
+| `order_id` | `uuid` | không | | FK → `orders.id` `ON DELETE CASCADE` |
+| `product_id` | `uuid` | có | | FK → `products.id` **`ON DELETE SET NULL`**: admin xoá sản phẩm không mất dòng đơn (D38) |
+| `product_name` | `text` | không | | Snapshot `products.name`; đã trim, 1–100 |
+| `category_name` | `text` | có | | Snapshot `categories.name` (hiển thị) |
+| `unit_price` | `integer` | không | | Snapshot `products.price` lúc đặt, > 0 |
+| `quantity` | `smallint` | không | | 1–10 |
+| `line_total` | `bigint` | không | generated `unit_price::bigint * quantity` stored | Không ghi trực tiếp |
+| `position` | `smallint` | không | | Thứ tự hiển thị (0-based, theo thứ tự giỏ); UNIQUE (`order_id, position`) |
+| `created_at` | `timestamptz` | không | `now()` | |
+
+**Indexes:** `order_items_order_position_unique` (`order_id, position`) – đọc dòng theo đơn đúng thứ tự; `order_items_product_id_idx` – FK SET NULL khi xoá sản phẩm.
+
+**Không snapshot ảnh** (Q32): `imageUrl` ký từ `products.image_path` hiện tại khi `product_id` còn; sản phẩm đã xoá → `imageUrl: null`. Không thêm bucket. Hệ quả: admin thay ảnh sản phẩm thì đơn cũ hiện ảnh mới (chấp nhận ở quy mô demo).
+
+**Hàm `public.place_order(p_profile_id uuid, p_idempotency_key uuid, p_recipient_name text, p_phone text, p_shipping_address text, p_note text, p_expected_total bigint) returns table (out_order_id uuid, out_created boolean)`** – PL/pgSQL, một transaction (D35):
+1. `SELECT … FROM profiles WHERE id = p_profile_id FOR UPDATE` – tuần tự hoá mọi lượt đặt của cùng user; không có → `P0001 'PROFILE_NOT_FOUND'`.
+2. Đã có đơn với (`profile_id`, `idempotency_key`) → trả `(id, false)`.
+3. Khoá `cart_items` của user `FOR UPDATE` và `products` liên quan `FOR SHARE` (admin sửa giá/xoá sản phẩm phải chờ transaction xong).
+4. Tính số dòng, Σ quantity, Σ `price × quantity`; 0 dòng → `P0001 'CART_EMPTY'`; tổng ≠ `p_expected_total` → `P0001 'CART_CHANGED'` (rollback toàn bộ).
+5. INSERT `orders` (`pending`, `cod`), INSERT `order_items` (snapshot + `position`), DELETE `cart_items` của user, trả `(id, true)`.
+
+Bảo mật: `SECURITY INVOKER` (chạy bằng quyền `service_role` của backend, cần GRANT bảng – đã có), `set search_path = ''` (mọi bảng ghi đủ schema `public.`), `REVOKE EXECUTE … FROM public, anon, authenticated`, `GRANT EXECUTE … TO service_role`. Backend ánh xạ: `error.code = 'P0001'` + `message` ∈ {`CART_EMPTY`, `CART_CHANGED`} → 409 cùng mã; `PROFILE_NOT_FOUND` → 401 `INVALID_TOKEN`; `23505` (dự phòng) → đọc lại đơn theo khoá → 200; khác → 500.
+
+**Quyết định thiết kế (Sprint 4, đã chốt 2026-11-18)**
+
+| Vấn đề | Quyết định | Lý do |
+|--------|-----------|-------|
+| Giỏ lưu ở đâu | Bảng `cart_items` ở server (Q23, D32) | Đồng bộ thiết bị/tab; tính tiền ở server; chỉ backend truy cập DB |
+| Khoá giỏ | PK ghép (`profile_id, product_id`), không cột `id` | Mỗi sản phẩm một dòng là bất biến nghiệp vụ; API định danh dòng bằng `productId` |
+| Lưu giá trong giỏ | Không (D34) | Một nguồn giá duy nhất; giá chốt bằng snapshot khi đặt |
+| Kiểu tổng tiền | `bigint` (`total_amount`, `line_total`) | 50 × 10 × 100.000.000 = 5·10^10 > `integer` |
+| Transaction đặt hàng | Hàm Postgres `place_order` gọi qua RPC (D35) | supabase-js không có transaction; tránh đơn thiếu dòng / giỏ không xoá |
+| Xoá sản phẩm có trong đơn | `order_items.product_id` SET NULL + snapshot tên/danh mục/giá (D38) | Giữ lịch sử đơn; luồng xoá sản phẩm Sprint 2 không phải đổi |
+| Xoá user có đơn | `orders.profile_id` RESTRICT | Không mất đơn ngoài ý muốn; chưa có tính năng xoá tài khoản |
+| Snapshot ảnh | Không (Q32) | Tránh copy object/bucket mới; tên + giá đủ cho lịch sử |
+| Trạng thái đơn | `text` + CHECK đủ 5 giá trị, Sprint 4 chỉ `pending` (Q29) | Thêm "admin đổi trạng thái" sau không cần migration |
+| Mã đơn | `order_number` identity + uuid `id` (D41) | Mã ngắn dễ đọc; URL không đoán được |

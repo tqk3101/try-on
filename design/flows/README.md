@@ -3,6 +3,7 @@
 > Sprint 1, Task 4: US-01 (đăng ký, đăng nhập, logout, bảo vệ route), US-02 (hồ sơ, ảnh toàn thân).
 > Sprint 2, Task 2: US-03 (danh mục), US-04 (sản phẩm) – khu vực admin và API đọc cho Sprint 3.
 > Sprint 3, Task 1 (2026-11-17; Q12 đã chốt: Gemini, `stub` mặc định; Q13–Q22 đã chốt 2026-11-17 theo mặc định, trừ Q15 = không prefetch): US-05, US-06 – phòng thử đồ, sinh ảnh GenAI bất đồng bộ + cache.
+> Sprint 4, Task 1 (2026-11-18, **Q23–Q34 đã chốt 2026-11-18 theo mặc định khuyến nghị; US-10 được duyệt**): US-07, US-08 (giỏ hàng), US-10 (đặt hàng – **bổ sung ngoài PB, chờ duyệt**), US-09 (admin xem đơn). Migration `010`/`011` **chưa áp**.
 > Đọc kèm `design/database/schema.md` (`profiles`, `categories`, `products`, bucket `avatars`, `products`). Code cài đặt **đúng** theo tài liệu này. Nếu cần đổi, cập nhật tài liệu trước.
 
 ## Mục lục
@@ -27,6 +28,7 @@
 | [category-management.md](category-management.md) | **Sprint 2.** Phân quyền admin (`requireAdmin`), CRUD `/api/admin/categories`, `GET /api/categories` | S2 Task 3, 4, 7 |
 | [product-management.md](product-management.md) | **Sprint 2.** CRUD `/api/admin/products` (multipart ảnh flat lay, bucket `products`), `GET /api/categories/:id/products` | S2 Task 5, 6, 7 |
 | [try-on-room.md](try-on-room.md) | **Sprint 3.** Provider GenAI (Gemini, `stub` mặc định; prompt cố định, ánh xạ lỗi), `POST /api/try-on` (202 + polling `GET /api/try-on/:id`), cache `try_on_results`, hạn mức, đồng ý xử lý ảnh, dọn kết quả khi đổi ảnh, luồng `/try-on` (mũi tên/vuốt, debounce, không prefetch) | S3 Task 1, 3, 4, 6 |
+| [cart-and-orders.md](cart-and-orders.md) | **Sprint 4.** Giỏ hàng server (`/api/cart`), nút "Thêm vào giỏ" ở phòng thử đồ, xem/sửa giỏ + tổng tiền, đặt hàng nguyên tử (`POST /api/orders`, hàm `place_order`, idempotency, `CART_CHANGED`), trang xác nhận đơn, admin xem đơn (`/api/admin/orders`, phân trang, lọc trạng thái) | S4 Task 1–5 |
 
 ## 2. Quy ước chung
 
@@ -105,6 +107,19 @@
 | GET | `/api/try-on/quota` | Bearer | – | 200 `data: { quota }` | – |
 | POST | `/api/try-on/consent` | Bearer | – | 200 `data: { profile }` (idempotent) | 429 |
 
+**Sprint 4** (đã chốt 2026-11-18, Q23–Q34 theo mặc định khuyến nghị; chi tiết, đối tượng `Cart`, `CartItem`, `Order`, `OrderItem`, `AdminOrder`, `AdminOrderSummary`, `Pagination`, bảng validate: `cart-and-orders.md` mục 2–3). Mọi route: Bearer, mọi role (Q31); lỗi chung 401 / 500; `/api/admin/*` thêm 403 `FORBIDDEN`.
+
+| Method | Path | Auth | Request | Thành công | Mã lỗi riêng |
+|--------|------|------|---------|------------|--------------|
+| GET | `/api/cart` | Bearer | – | 200 `data: { cart }` | 429 |
+| POST | `/api/cart/items` | Bearer | JSON `{ productId, quantity? }` | **201** `data: { cart, item }` (dòng mới) · 200 (cộng dồn) | 400 `VALIDATION_ERROR` / `BAD_REQUEST`, 404 `PRODUCT_NOT_FOUND`, 409 `CART_FULL` / `CART_QUANTITY_LIMIT`, 429 |
+| PUT | `/api/cart/items/:productId` | Bearer | JSON `{ quantity }` (tuyệt đối, 1–10) | 200 `data: { cart }` | 400, 404 `CART_ITEM_NOT_FOUND`, 429 |
+| DELETE | `/api/cart/items/:productId` | Bearer | – | 200 `data: { cart }` (idempotent) | 400, 429 |
+| POST | `/api/orders` | Bearer | JSON `{ idempotencyKey, recipientName, phone, shippingAddress, note?, expectedTotal }` | **201** `data: { order }` · 200 (khoá đã dùng → đơn cũ) | 400, 409 `CART_EMPTY` / `CART_CHANGED`, 429 |
+| GET | `/api/orders/:id` | Bearer (chủ đơn) | – | 200 `data: { order }` | 404 `ORDER_NOT_FOUND` |
+| GET | `/api/admin/orders` | Admin | Query `status?`, `page?`, `pageSize?` (1–50, mặc định 20) | 200 `data: { orders, pagination }` | 400 `VALIDATION_ERROR` |
+| GET | `/api/admin/orders/:id` | Admin | – | 200 `data: { order }` | 404 `ORDER_NOT_FOUND` |
+
 Không có endpoint logout phía server (xem `logout-protected-routes.md`). Mọi route lạ dưới `/api` trả 404 `NOT_FOUND` (đã có).
 
 ## 4. Bảng mã lỗi
@@ -124,8 +139,14 @@ Không có endpoint logout phía server (xem `logout-protected-routes.md`). Mọ
 | 404 | `CATEGORY_NOT_FOUND` | Danh mục không tồn tại hoặc đã bị xoá. | Sprint 2: `:id` danh mục trên path không có / không phải uuid |
 | 404 | `PRODUCT_NOT_FOUND` | Sản phẩm không tồn tại hoặc đã bị xoá. | Sprint 2: `:id` sản phẩm trên path không có / không phải uuid |
 | 404 | `TRY_ON_NOT_FOUND` | Không tìm thấy ảnh thử đồ. | Sprint 3: `GET /api/try-on/:id` không tồn tại, không phải uuid hoặc thuộc user khác |
+| 404 | `CART_ITEM_NOT_FOUND` | Sản phẩm này không còn trong giỏ hàng. | Sprint 4: `PUT /api/cart/items/:productId` không có dòng (đã xoá ở tab khác / sản phẩm bị admin xoá) |
+| 404 | `ORDER_NOT_FOUND` | Không tìm thấy đơn hàng. | Sprint 4: `GET /api/orders/:id` (không có, không phải uuid, của user khác) và `GET /api/admin/orders/:id` |
 | 409 | `PROFILE_INCOMPLETE` | Bạn cần hoàn thiện hồ sơ (ảnh toàn thân, chiều cao, cân nặng) để thử đồ. | Sprint 3: kèm `fields` (`avatar`, `heightCm`, `weightKg`) – ngoại lệ có chủ đích với quy tắc "`fields` chỉ đi với `VALIDATION_ERROR`" để client liệt kê mục thiếu |
 | 409 | `TRY_ON_CONSENT_REQUIRED` | Bạn cần đồng ý cho phép xử lý ảnh trước khi thử đồ. | Sprint 3: `profiles.try_on_consent_at` null |
+| 409 | `CART_FULL` | Giỏ hàng đã có 50 sản phẩm. Vui lòng bớt sản phẩm trước khi thêm. | Sprint 4: thêm dòng mới khi giỏ đã đủ `maxLines` (Q33) |
+| 409 | `CART_QUANTITY_LIMIT` | Mỗi sản phẩm chỉ đặt tối đa 10 chiếc. | Sprint 4: cộng dồn khi thêm vượt `maxQuantity` (Q25, Q26) |
+| 409 | `CART_EMPTY` | Giỏ hàng đang trống. | Sprint 4: `POST /api/orders` khi giỏ không còn dòng (có thể đã đặt ở tab khác) |
+| 409 | `CART_CHANGED` | Giỏ hàng vừa thay đổi (giá hoặc sản phẩm). Vui lòng kiểm tra lại trước khi đặt hàng. | Sprint 4: tổng server tính khác `expectedTotal` (đổi giá, sản phẩm bị xoá, số lượng đổi ở tab khác – D37) |
 | 409 | `EMAIL_EXISTS` | Email này đã được đăng ký. | Register trùng email |
 | 409 | `CATEGORY_EXISTS` | Danh mục này đã tồn tại. | Sprint 2: `23505` trên `categories_name_lower_unique` / `categories_slug_unique` |
 | 409 | `CATEGORY_NOT_EMPTY` | Danh mục còn {N} sản phẩm. Hãy xoá hoặc chuyển các sản phẩm sang danh mục khác trước khi xoá. | Sprint 2: xoá danh mục còn sản phẩm (đếm trước, hoặc `23503` khi race – message không kèm số) |
@@ -154,7 +175,12 @@ Lỗi **trong job** sinh ảnh không phải HTTP error: trả trong `tryOn.erro
 | `/admin/products/new` | Chỉ admin | Form thêm (chọn sẵn danh mục nếu có `?categoryId=`) |
 | `/admin/products/:id/edit` | Chỉ admin | Form sửa (`GET /api/admin/products/:id`) |
 | `/try-on` | Bảo vệ (Sprint 3) | Chọn danh mục (`GET /api/categories`); hồ sơ chưa đủ → màn "Hoàn thiện hồ sơ". Đích mặc định sau đăng nhập từ Sprint 3 Task 4 (Q19) |
-| `/try-on/:categoryId` | Bảo vệ (Sprint 3) | Phòng thử đồ; query `?product=<productId>` giữ vị trí (cập nhật bằng `replace`) |
+| `/try-on/:categoryId` | Bảo vệ (Sprint 3) | Phòng thử đồ; query `?product=<productId>` giữ vị trí (cập nhật bằng `replace`). Sprint 4: nút "Thêm vào giỏ" trong `ProductPanel` |
+| `/cart` | Bảo vệ (Sprint 4) | Giỏ hàng: dòng, số lượng −/+, xoá, tổng tiền, nút Đặt hàng. Badge giỏ ở header dẫn tới đây |
+| `/checkout` | Bảo vệ (Sprint 4) | Form giao hàng + tóm tắt đơn; giỏ trống → `/cart` (replace) |
+| `/orders/:id` | Bảo vệ (Sprint 4, chỉ chủ đơn) | Xác nhận đơn / xem lại đơn; router state `{ placed: true }` khi đến từ `/checkout` |
+| `/admin/orders` | Chỉ admin (Sprint 4) | Danh sách đơn; query `?status=&page=` (push khi đổi) |
+| `/admin/orders/:id` | Chỉ admin (Sprint 4) | Chi tiết đơn |
 | `*` | Public | 404 |
 
 Route admin là đề xuất của BA; bố cục chi tiết do `design/screens.md` (agent-uiux) chốt, nếu đổi path thì cập nhật bảng này.
@@ -196,6 +222,16 @@ Thêm `profile: '/profile'` vào `PATHS` và bật `AUTH_ENABLED = true` trong `
 | D29 | (Sprint 3, đã chốt 2026-11-17) Dọn kết quả | Thay/xoá ảnh toàn thân → xoá mọi kết quả của user; thay ảnh/xoá sản phẩm → xoá kết quả của sản phẩm; row trước, object sau, best-effort | Ảnh kết quả chứa hình người dùng phải đi theo ảnh gốc; không để object mồ côi |
 | D30 | (Sprint 3, đã chốt 2026-11-17) Hạn mức | 30 job thành công/đang chạy mỗi user mỗi ngày (giờ VN), đếm từ DB; cache hit và job `failed` không tính; limiter POST 20/phút, GET 120/phút theo user | Kiểm soát chi phí provider; không phạt người dùng vì lỗi hệ thống |
 | D31 | (Sprint 3, đã chốt 2026-11-17) Quyền xem kết quả | Mọi truy vấn lọc `profile_id = sub`; id của người khác → 404 `TRY_ON_NOT_FOUND` | Không lộ sự tồn tại của ảnh người khác |
+| D32 | (Sprint 4, đã chốt 2026-11-18) Nơi lưu giỏ | **Server**: bảng `cart_items` (PK `profile_id, product_id`), không dùng `localStorage` | Giỏ theo tài khoản, đồng nhất giữa thiết bị/tab; đặt hàng phải đọc giỏ ở server để tính tiền nên lưu client vẫn phải gửi lên; không giữ dữ liệu mua sắm trên máy dùng chung. Trade-off: mỗi thao tác 1 request (chấp nhận được) |
+| D33 | (Sprint 4, đã chốt 2026-11-18) Ngữ nghĩa API giỏ | POST thêm = **cộng dồn** (201 dòng mới / 200 đã có), PUT = số lượng **tuyệt đối**, DELETE idempotent; mọi thao tác trả **toàn bộ** `cart` | PUT tuyệt đối an toàn khi gửi lại; client thay state theo server, không tự tính tổng; 201/200 cho UI chọn đúng toast |
+| D34 | (Sprint 4, đã chốt 2026-11-18) Tính tiền | Giỏ **không lưu giá**; `price`, `lineTotal`, `total` tính ở server từ `products.price` hiện tại; giá chốt bằng snapshot `order_items.unit_price` lúc đặt; tổng `bigint` | Không tin client; không có "giá cũ trong giỏ" phải đồng bộ; 50 × 10 × 100.000.000 vượt `integer` |
+| D35 | (Sprint 4, đề xuất) Đặt hàng nguyên tử | Hàm Postgres `public.place_order` gọi qua `supabase.rpc` (1 transaction): khoá profile, kiểm tra idempotency, khoá giỏ + `FOR SHARE` sản phẩm, so tổng, tạo đơn + dòng, xoá giỏ. `SECURITY INVOKER`, `search_path = ''`, EXECUTE chỉ `service_role` (REVOKE `public/anon/authenticated`). Lỗi nghiệp vụ `P0001` + message = mã API | supabase-js không có transaction; nhiều request rời có thể tạo đơn thiếu dòng hoặc giỏ không được xoá. Postgres mặc định cấp EXECUTE cho `PUBLIC` nên phải REVOKE |
+| D36 | (Sprint 4, đề xuất) Idempotency | `idempotencyKey` (uuid) **trong body**, client sinh khi mở `/checkout`, giữ tới khi thành công; unique `(profile_id, idempotency_key)`; khoá đã dùng → 200 đơn cũ | Bấm 2 lần / gửi lại khi lỗi mạng không tạo đơn trùng. Không dùng header `Idempotency-Key` để khỏi sửa `allowedHeaders` của CORS |
+| D37 | (Sprint 4, đã chốt 2026-11-18) Giỏ đổi lúc đặt | Client gửi `expectedTotal` (= `cart.total` đang hiển thị); server tính lại, lệch → 409 `CART_CHANGED`, client tải lại giỏ, giữ form | Người mua không bị tính giá khác giá đã thấy (đổi giá, sản phẩm bị xoá, tab khác sửa số lượng) |
+| D38 | (Sprint 4, đã chốt 2026-11-18) Lịch sử đơn khi xoá sản phẩm | `order_items` snapshot `product_name`, `category_name`, `unit_price`; `product_id` FK `ON DELETE SET NULL`; **không** snapshot ảnh (ảnh lấy từ sản phẩm hiện tại nếu còn); `orders.profile_id` `ON DELETE RESTRICT`; `cart_items` `CASCADE` | Xoá sản phẩm (Sprint 2) không làm mất đơn; không cần bucket/copy object mới; xoá user không âm thầm mất đơn |
+| D39 | (Sprint 4, đề xuất) Danh sách đơn admin | Phân trang **offset** (`page`, `pageSize` 1–50, mặc định 20, `count: 'exact'`), lọc `status`, sắp `created_at desc, id desc`; danh sách không trả SĐT/địa chỉ (chỉ ở chi tiết) | Đơn tăng dần không giới hạn (khác D22); offset đủ cho quy mô demo, dễ làm nút trang; tối thiểu hoá dữ liệu cá nhân |
+| D40 | (Sprint 4, đề xuất) Chống lạm dụng | `cartLimiter` 60/phút (POST/PUT/DELETE giỏ), `cartReadLimiter` 120/phút (GET giỏ), `orderLimiter` 10/15 phút (POST đơn), theo `req.user.id` sau `requireAuth` | Cùng cơ chế `createLimiter`; đặt hàng là thao tác hiếm |
+| D41 | (Sprint 4, đề xuất) Mã đơn | Cột `order_number bigint generated always as identity`; hiển thị `DH` + 6 chữ số (`DH000123`); `id` uuid vẫn dùng trên URL/API | Mã ngắn dễ đọc qua điện thoại; uuid trên URL không đoán được đơn người khác |
 ## 7. Câu hỏi còn mở (cần người dùng chốt)
 
 Các mục dưới đã có **giá trị mặc định** trong flow; dev làm theo mặc định nếu người dùng chưa trả lời.
@@ -224,10 +260,24 @@ Các mục dưới đã có **giá trị mặc định** trong flow; dev làm th
 | ~~Q20~~ | ~~(Sprint 3) Có hiện nút "Thêm vào giỏ" sớm?~~ | **Đã chốt** (2026-11-17): không có nút ở Sprint 3 (US-07 thuộc Sprint 4) |
 | ~~Q21~~ | ~~(Sprint 3) Test tự động phạm vi nào?~~ | **Đã chốt** (2026-11-17): Vitest (backend + frontend), supertest cho HTTP, mock Supabase và Gemini; không E2E Playwright tự động ở Sprint 3 |
 | ~~Q22~~ | ~~(Sprint 3) Thời hạn giữ ảnh kết quả?~~ | **Đã chốt** (2026-11-17): giữ tới khi đầu vào đổi (thay/xoá ảnh toàn thân, thay ảnh/xoá sản phẩm); không TTL; không có nút xoá toàn bộ ảnh thử đồ |
+| Q23 | (Sprint 4, đã chốt 2026-11-18 theo mặc định) Giỏ lưu ở server hay `localStorage`? | **Server** (`cart_items`, D32): đồng bộ thiết bị/tab, tính tiền ở server; `localStorage` vẫn phải gửi lên khi đặt và lệch giữa tab |
+| Q24 | (Sprint 4, đã chốt 2026-11-18 theo mặc định) Có làm bước **đặt hàng** (US-10, bổ sung ngoài PB) trong Sprint 4 không? | **Có, tối thiểu**: nút Đặt hàng → form giao hàng → tạo đơn `pending`, xoá giỏ, trang xác nhận. Không có thì US-09 không có dữ liệu. Phương án thay thế bị loại: "giỏ = đơn" (admin xem giỏ người dùng) – không có thời điểm "đã đặt", lộ hành vi chưa mua |
+| Q25 | (Sprint 4, đã chốt 2026-11-18 theo mặc định) Có số lượng / size / màu không? | **Có số lượng 1–10 mỗi dòng; không size/màu** (sản phẩm chưa có biến thể – US-04 ngoài phạm vi); không tồn kho |
+| Q26 | (Sprint 4, đã chốt 2026-11-18 theo mặc định) Thêm sản phẩm đã có trong giỏ: tăng số lượng hay chặn? | **Tăng +1** (tối đa 10, vượt → 409 `CART_QUANTITY_LIMIT`); toast "{tên} đã có trong giỏ, số lượng: n". Chặn khiến nút trông như hỏng khi người dùng muốn mua 2 chiếc |
+| Q27 | (Sprint 4, đã chốt 2026-11-18 theo mặc định) Thu thập thông tin giao hàng nào? | **Họ tên người nhận, SĐT (bắt buộc, di động VN như `profiles.phone`), địa chỉ một ô 10–500 ký tự, ghi chú tuỳ chọn**; điền sẵn tên + SĐT từ hồ sơ; **không** lưu ngược vào hồ sơ, không có sổ địa chỉ; tách tỉnh/quận/phường để sau. Chỉ chủ đơn + admin xem, không log |
+| Q28 | (Sprint 4, đã chốt 2026-11-18 theo mặc định) Thanh toán và phí vận chuyển? | **Không tích hợp thanh toán**: chỉ ghi nhận "Thanh toán khi nhận hàng (COD)" (`payment_method = 'cod'`); **không phí vận chuyển** (tổng đơn = tổng giỏ). Dự án học tập (Q4), cổng thanh toán cần story riêng |
+| Q29 | (Sprint 4, đã chốt 2026-11-18 theo mặc định) Trạng thái đơn và ai đổi? | **Sprint 4 chỉ có `pending` ("Chờ xử lý"), admin chỉ xem** (đúng US-09), người mua không huỷ. CHECK DB đã có đủ `pending/confirmed/shipping/completed/cancelled` để thêm "admin đổi trạng thái" ở sprint sau không cần migration (Could) |
+| Q30 | (Sprint 4, đã chốt 2026-11-18 theo mặc định) Giá chốt lúc nào; sản phẩm đổi giá / bị xoá khi đang trong giỏ? | **Giá chốt lúc đặt** (snapshot); giỏ luôn hiện giá hiện tại; lệch lúc đặt → 409 `CART_CHANGED` + tải lại giỏ (D37); sản phẩm bị xoá tự biến khỏi giỏ (cascade), không thông báo riêng ngoài lúc đặt |
+| Q31 | (Sprint 4, đã chốt 2026-11-18 theo mặc định) Admin có thêm vào giỏ / đặt hàng được không? | **Có** (mọi role đã đăng nhập, như phòng thử đồ – Q18); đơn của admin hiện trong danh sách như đơn khác |
+| Q32 | (Sprint 4, đã chốt 2026-11-18 theo mặc định) Ảnh trong giỏ / đơn: ảnh thử đồ hay flat lay; có snapshot ảnh không? | **Flat lay** (luôn có; ảnh thử đồ có thể chưa tạo/bị dọn và là dữ liệu nhạy cảm); bấm dòng giỏ mở lại phòng thử đồ ở đúng sản phẩm. Đơn **không snapshot ảnh**: sản phẩm bị xoá → ô giữ chỗ "Sản phẩm đã ngừng bán" (tránh bucket/copy object mới) |
+| Q33 | (Sprint 4, đã chốt 2026-11-18 theo mặc định) Giới hạn kích thước giỏ? | **50 dòng, 10 chiếc/dòng** (giới hạn mềm ở backend, trả trong `cart.limits`); đủ cho demo, chặn lạm dụng và tổng tiền bất thường |
+| Q34 | (Sprint 4, đã chốt 2026-11-18 theo mặc định) Người mua có trang "Đơn hàng của tôi" (danh sách) không? | **Không ở Sprint 4** (PB không có): chỉ trang xác nhận `/orders/:id` (xem lại được bằng URL). Danh sách `GET /api/orders` + `/orders` là Could cho sprint sau (index `orders_profile_created_idx` đã có) |
 
 ## 8. Đề xuất thay đổi schema
 
 **Sprint 1 cần thêm migration `004_add_profiles_phone.sql`** (cột `phone`, chốt Q6 ngày 2026-11-03). Các flow khác dùng đúng cột/constraint của `001`–`002`.
+
+**Sprint 4 (nháp, chưa áp):** `010_create_cart_items.sql` (bảng `cart_items`), `011_create_orders.sql` (bảng `orders`, `order_items`, hàm `place_order`). Thiết kế: `schema.md` mục 15–17. Áp tuần tự `010` → `011` sau khi chốt Q23–Q34.
 
 Ghi nhận cho sau (chỉ làm khi người dùng yêu cầu thu hồi token phía server, ví dụ "đăng xuất khỏi mọi thiết bị", đổi mật khẩu, khoá user ở Epic 2):
 - `004_add_profiles_token_version.sql`: `alter table public.profiles add column token_version integer not null default 0;` JWT thêm claim `tv`; `requireAuth` so sánh với DB (thêm 1 query/request); tăng `token_version` để vô hiệu mọi token cũ.

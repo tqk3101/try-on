@@ -13,8 +13,12 @@ SQL migration + seed cho Supabase, đánh số thứ tự. Thiết kế chi ti�
 | `007_create_products_bucket.sql` | Bucket private `products` (5MB, jpeg/png) cho ảnh flat lay | Mọi môi trường. Đã áp lên Supabase 2026-11-03 |
 | `008_create_try_on_results.sql` | Cột `profiles.try_on_consent_at`; bảng `try_on_results` (cache + job thử đồ, FK `ON DELETE CASCADE` tới `profiles`/`products`, unique index một phần cho kết quả `succeeded` và job đang chạy, index hạn mức), trigger `updated_at`, RLS bật, REVOKE anon/authenticated, GRANT `service_role` | Mọi môi trường. **Đã áp 2026-11-17** (Sprint 3 Task 1, viết 2026-11-17; Q12 đã chốt – provider `stub`/`gemini`, chỉ sửa comment; chờ chốt Q13–Q22) |
 | `009_create_try_on_results_bucket.sql` | Bucket private `try-on-results` (10MB, jpeg/png/webp) cho ảnh kết quả thử đồ | Mọi môi trường. **Đã áp qua MCP 2026-11-17** (sau `008`) |
+| `010_create_cart_items.sql` | Bảng `cart_items` (giỏ hàng server, PK `profile_id, product_id`, quantity 1–10, FK `ON DELETE CASCADE` tới `profiles`/`products`, không lưu giá), trigger `updated_at`, RLS bật, REVOKE anon/authenticated, GRANT `service_role` | Mọi môi trường. **Đã áp qua MCP 2026-11-18** (Sprint 4 Task 1; Q23–Q34 đã chốt) |
+| `011_create_orders.sql` | Bảng `orders` (thông tin giao hàng, `order_number` identity, idempotency unique theo user, status/payment CHECK, tổng `bigint`, FK profile `RESTRICT`), `order_items` (snapshot tên/danh mục/đơn giá, `product_id` `ON DELETE SET NULL`, `line_total` generated), hàm `place_order` (đặt hàng nguyên tử, `SECURITY INVOKER`, EXECUTE chỉ `service_role`); RLS bật, REVOKE anon/authenticated, GRANT `service_role` (cả sequence identity) | Mọi môi trường. **Đã áp qua MCP 2026-11-18** (sau `010`) |
 
 ## Trạng thái áp dụng
+
+`010` và `011` (Sprint 4 – Task 1) **đã áp qua Supabase MCP ngày 2026-11-18** (tuần tự; đã verify: GRANT chỉ `service_role` trên 3 bảng, RLS bật, `place_order` chỉ `service_role` chạy được, sequence `order_number`; thử `place_order` trong giao dịch bị huỷ: sai tổng -> `CART_CHANGED`, đúng tổng -> tạo đơn + snapshot + xoá giỏ, cùng khoá -> đơn cũ, giỏ rỗng -> `CART_EMPTY`, xoá sản phẩm giữ snapshot). Không sửa file đã áp.
 
 `008` và `009` (Sprint 3 – Task 1) **đã áp qua Supabase MCP ngày 2026-11-17** (đã verify: GRANT chỉ `service_role`, RLS bật, 2 unique index một phần + 2 index thường, cột `profiles.try_on_consent_at`, bucket `try-on-results` private 10MB jpeg/png/webp). Không sửa file đã áp; thay đổi schema bằng migration mới.
 
@@ -25,7 +29,7 @@ SQL migration + seed cho Supabase, đánh số thứ tự. Thiết kế chi ti�
 ## Cách áp dụng (Supabase SQL Editor)
 
 1. Mở Supabase Dashboard → project → **SQL Editor** → New query.
-2. Dán và chạy lần lượt **theo thứ tự số**: `001` → `002` → `003` → … → `009` (bỏ `003` trên production).
+2. Dán và chạy lần lượt **theo thứ tự số**: `001` → `002` → `003` → … → `011` (bỏ `003` trên production).
 3. Mỗi file idempotent: chạy lại không lỗi, không xoá dữ liệu.
 4. Kiểm tra:
    ```sql
