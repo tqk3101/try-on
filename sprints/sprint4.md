@@ -3,7 +3,7 @@
 Người mua thêm sản phẩm vào giỏ ngay trong phòng thử đồ, xem/sửa giỏ với tổng tiền do server tính và đặt hàng (COD, chưa thanh toán online); admin xem danh sách và chi tiết đơn đã đặt. Hoàn thành luồng thương mại cơ bản của Epic 4.
 User Stories: US-07 (thêm vào giỏ ở phòng thử đồ), US-08 (xem giỏ + tổng tiền), **US-10 (đặt hàng từ giỏ – bổ sung ngoài PB, chờ duyệt)**, US-09 (admin xem đơn)
 
-**Trạng thái:** PLANNED (lập kế hoạch 2026-11-18, agent-ba). Task 1 đã có thiết kế, Q23–Q34 đã chốt 2026-11-18 (migration `010`/`011` đã áp qua MCP và verify cùng ngày): flow `design/flows/cart-and-orders.md`, contract/mã lỗi/route/D32–D41 ở `design/flows/README.md`, schema `design/database/schema.md` mục 15–17, migration **nháp** `010`/`011` (**CHƯA ÁP**). **Chờ người dùng chốt Q23–Q34** (`design/flows/README.md` mục 7) và **duyệt US-10** (Q24) trước khi áp migration và giao Task 2–5.
+**Trạng thái:** IN PROGRESS (nhánh `feature/US-07-cart`). Task 1 hoàn thành 2026-11-18: thiết kế xong, Q23–Q34 đã chốt và US-10 đã duyệt, migration `010`/`011` đã áp qua MCP và verify. Flow `design/flows/cart-and-orders.md`, contract/mã lỗi/route/D32–D41 ở `design/flows/README.md`, schema `design/database/schema.md` mục 15–17. Task 2–6 chưa bắt đầu.
 
 **Khoảng trống PB đã xử lý:** PB Epic 4 không có story tạo đơn nhưng US-09 cần "đơn hàng đã đặt". Đã thêm **US-10** vào `PB.md` (đánh dấu chờ duyệt) và `sprints/US-10.md` với phạm vi tối thiểu (form giao hàng → đơn `pending`, COD, xoá giỏ, trang xác nhận). Theo quy tắc Scrum của `CLAUDE.md`, mọi thứ ngoài backlog được ghi vào đây trước khi làm.
 
@@ -34,7 +34,7 @@ User Stories: US-07 (thêm vào giỏ ở phòng thử đồ), US-08 (xem giỏ 
 - [x] `design/database/schema.md` (ERD, mục 5, 6, 9, 15–17); `migrations/010_create_cart_items.sql`, `011_create_orders.sql` (nháp, RLS bật, REVOKE anon/authenticated, GRANT `service_role`, EXECUTE `place_order` chỉ `service_role`); `migrations/README.md`
 - [x] Cập nhật `design/PRD.md` (tính năng US-07..US-10, NFR, rủi ro, chỉ mục API, lộ trình S4)
 - [x] Người dùng chốt Q23–Q34 và duyệt US-10 (2026-11-18, theo mặc định khuyến nghị); agent-ba cập nhật tài liệu theo câu trả lời (bỏ chữ "đề xuất" ở D32–D41, sửa migration nếu chốt khác mặc định)
-- [ ] Agent chính áp `010` → `011` **tuần tự** qua Supabase MCP và verify: `list_migrations`; `role_table_grants` của `cart_items`/`orders`/`order_items` chỉ `service_role`; RLS bật; `has_function_privilege` của `anon`/`authenticated` trên `place_order` = false, `service_role` = true; thử `place_order` trong transaction **rollback** (giỏ trống → `CART_EMPTY`; tổng lệch → `CART_CHANGED`; cùng khoá 2 lần → 1 đơn; xoá sản phẩm có trong đơn → `product_id` NULL); cập nhật trạng thái "đã áp" ở `CLAUDE.md`, `migrations/README.md`, `schema.md`, comment đầu file migration (common_errors 4.2)
+- [x] Agent chính áp `010` → `011` **tuần tự** qua Supabase MCP và verify: `list_migrations`; `role_table_grants` của `cart_items`/`orders`/`order_items` chỉ `service_role`; RLS bật; `has_function_privilege` của `anon`/`authenticated` trên `place_order` = false, `service_role` = true; thử `place_order` trong transaction **rollback** (giỏ trống → `CART_EMPTY`; tổng lệch → `CART_CHANGED`; cùng khoá 2 lần → 1 đơn; xoá sản phẩm có trong đơn → `product_id` NULL); cập nhật trạng thái "đã áp" ở `CLAUDE.md`, `migrations/README.md`, `schema.md`, comment đầu file migration (common_errors 4.2)
 
 **Acceptance Criteria:**
 - Flow, contract, schema, migration khớp nhau và không mâu thuẫn tài liệu Sprint 1–3 (envelope, mã lỗi, route, D19/D23/D24)

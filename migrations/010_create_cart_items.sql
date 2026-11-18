@@ -2,9 +2,9 @@
 -- 010_create_cart_items.sql
 -- Sprint 4 – Task 1: Giỏ hàng (US-07 thêm vào giỏ, US-08 xem giỏ + tổng tiền)
 --
--- TRẠNG THÁI: CHƯA ÁP – BẢN NHÁP (viết 2026-11-18). Chờ người dùng chốt Q23
--- (giỏ lưu server), Q25 (số lượng), Q33 (giới hạn) ở design/flows/README.md
--- mục 7. Agent chính áp qua Supabase MCP, TUẦN TỰ trước 011 (common_errors 1.4).
+-- TRẠNG THÁI: ĐÃ ÁP qua Supabase MCP ngày 2026-11-18 (đã verify GRANT/RLS).
+-- Q23, Q25, Q33 đã chốt 2026-11-18 (design/flows/README.md mục 7). Áp TUẦN TỰ
+-- trước 011 (common_errors 1.4). Không sửa file đã áp.
 --
 -- public.cart_items: mỗi dòng = 1 sản phẩm trong giỏ của 1 user.
 -- - PK (profile_id, product_id): mỗi sản phẩm tối đa 1 dòng/giỏ; thêm lại sản

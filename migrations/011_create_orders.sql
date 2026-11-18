@@ -3,10 +3,9 @@
 -- Sprint 4 – Task 1: Đặt hàng (US-10, bổ sung ngoài PB – chờ duyệt) và
 -- danh sách đơn cho Admin (US-09)
 --
--- TRẠNG THÁI: CHƯA ÁP – BẢN NHÁP (viết 2026-11-18). Chờ người dùng chốt
--- Q24 (có US-10), Q27 (thông tin giao hàng), Q28 (COD), Q29 (trạng thái),
--- Q30 (giá chốt lúc đặt), Q32 (không snapshot ảnh) ở design/flows/README.md
--- mục 7. Agent chính áp qua Supabase MCP SAU 010, tuần tự (common_errors 1.4).
+-- TRẠNG THÁI: ĐÃ ÁP qua Supabase MCP ngày 2026-11-18, sau 010 (đã verify quyền
+-- bảng/hàm, RLS, thử place_order trong giao dịch bị huỷ). Q24, Q27–Q30, Q32 đã
+-- chốt 2026-11-18 (design/flows/README.md mục 7). Không sửa file đã áp.
 --
 -- 1. public.orders: đơn hàng, thông tin giao hàng (dữ liệu cá nhân), tổng tiền
 --    do server tính. order_number (identity) dùng làm mã hiển thị "DH000123".

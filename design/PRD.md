@@ -55,9 +55,9 @@ Trạng thái tại **2026-11-18**. Ưu tiên MoSCoW: toàn bộ US-01…US-09 l
 | US-04 | Thêm/sửa/xoá sản phẩm + ảnh flat lay; API đọc cho người mua | Admin | US-03 | S2 | **Xong**, đã merge `main` (`c513f01`) | [US-04](../sprints/US-04.md) · [product-management](flows/product-management.md) |
 | US-05 | Chọn danh mục → ảnh mình mặc sản phẩm đầu tiên | User | US-02, US-04 | S3 | **Xong**, đã merge `main` (`372f9a0`) | [US-05](../sprints/US-05.md) · [try-on-room](flows/try-on-room.md) |
 | US-06 | Mũi tên / vuốt / phím → sản phẩm tiếp theo | User | US-05 | S3 | **Xong**, đã merge `main` (`372f9a0`) | [US-06](../sprints/US-06.md) · [try-on-room](flows/try-on-room.md) mục 9 |
-| US-07 | "Thêm vào giỏ" trên màn thử đồ (giỏ server, +1 nếu đã có, ≤ 10/dòng, ≤ 50 dòng) | User | US-05/06 | S4 | Đã thiết kế (đề xuất, chờ Q23–Q34); migration `010` nháp | [US-07](../sprints/US-07.md) · [cart-and-orders](flows/cart-and-orders.md) mục 4, 6 |
-| US-08 | Xem/sửa giỏ hàng, tổng tiền tính ở server | User | US-07 | S4 | Đã thiết kế (đề xuất) | [US-08](../sprints/US-08.md) · [cart-and-orders](flows/cart-and-orders.md) mục 7 |
-| US-10 | **(Bổ sung ngoài PB, chờ duyệt – Q24)** Đặt hàng từ giỏ: người nhận, SĐT, địa chỉ, COD; đơn `pending`, snapshot giá, trang xác nhận | User | US-08 | S4 | Đã thiết kế (đề xuất); migration `011` nháp (hàm `place_order`) | [US-10](../sprints/US-10.md) · [cart-and-orders](flows/cart-and-orders.md) mục 5, 8 |
+| US-07 | "Thêm vào giỏ" trên màn thử đồ (giỏ server, +1 nếu đã có, ≤ 10/dòng, ≤ 50 dòng) | User | US-05/06 | S4 | Đã thiết kế (Q23–Q34 đã chốt 2026-11-18); migration `010` đã áp | [US-07](../sprints/US-07.md) · [cart-and-orders](flows/cart-and-orders.md) mục 4, 6 |
+| US-08 | Xem/sửa giỏ hàng, tổng tiền tính ở server | User | US-07 | S4 | Đã thiết kế (đã chốt) | [US-08](../sprints/US-08.md) · [cart-and-orders](flows/cart-and-orders.md) mục 7 |
+| US-10 | **(Bổ sung ngoài PB, đã duyệt 2026-11-18 – Q24)** Đặt hàng từ giỏ: người nhận, SĐT, địa chỉ, COD; đơn `pending`, snapshot giá, trang xác nhận | User | US-08 | S4 | Đã thiết kế (đã chốt); migration `011` đã áp (hàm `place_order`) | [US-10](../sprints/US-10.md) · [cart-and-orders](flows/cart-and-orders.md) mục 5, 8 |
 | US-09 | Admin xem danh sách đơn (phân trang, lọc trạng thái) + chi tiết; chỉ xem | Admin | US-10 | S4 | Đã thiết kế (đề xuất) | [US-09](../sprints/US-09.md) · [cart-and-orders](flows/cart-and-orders.md) mục 9 |
 
 **US-05/06 – chi tiết tiến độ** (nguồn: [sprint3.md](../sprints/sprint3.md), branch `feature/US-05-try-on-room`, đã merge `main`):
@@ -135,8 +135,8 @@ Acceptance criteria từng story: xem file US tương ứng; không nhắc lại
 | [flows/category-management.md](flows/category-management.md), [flows/product-management.md](flows/product-management.md) | US-03, US-04, `requireAdmin`, API đọc cho người mua |
 | [flows/cart-and-orders.md](flows/cart-and-orders.md) | US-07, US-08, US-10, US-09 (Sprint 4, đề xuất): đối tượng `Cart`/`Order`, validate, `place_order`, luồng frontend, race, dọn dữ liệu |
 | [flows/try-on-room.md](flows/try-on-room.md) | US-05, US-06: provider Gemini, đối tượng `TryOn`/`TryOnQuota` (mục 4), job, cache, dọn dữ liệu, luồng frontend, hạn mức, kiểm thử |
-| [database/schema.md](database/schema.md) | ERD, bảng `profiles`, `categories`, `products`, `try_on_results`, `cart_items`, `orders`, `order_items` (S4, nháp), hàm `place_order`; bucket; RLS; ánh xạ API ↔ cột |
-| [../migrations/README.md](../migrations/README.md) | Thứ tự và trạng thái áp `001`–`011` (`010`/`011` nháp, chưa áp) |
+| [database/schema.md](database/schema.md) | ERD, bảng `profiles`, `categories`, `products`, `try_on_results`, `cart_items`, `orders`, `order_items` (S4), hàm `place_order`; bucket; RLS; ánh xạ API ↔ cột |
+| [../migrations/README.md](../migrations/README.md) | Thứ tự và trạng thái áp `001`–`011` (`010`/`011` đã áp 2026-11-18) |
 | [screens.md](screens.md), [design-system.md](design-system.md) | Mô tả màn hình, trạng thái UI, component, token, a11y |
 | [../sprints/sprint1.md](../sprints/sprint1.md), [sprint2.md](../sprints/sprint2.md), [sprint3.md](../sprints/sprint3.md), [sprint4.md](../sprints/sprint4.md) | Sprint backlog, acceptance criteria, Definition of Done, ghi chú verify |
 | `../sprints/US-01.md` … `US-10.md` | User story chi tiết (US-10 bổ sung ngoài PB, chờ duyệt) |
@@ -163,7 +163,7 @@ Acceptance criteria từng story: xem file US tương ứng; không nhắc lại
 | S1 | Setup project, landing, xác thực, hồ sơ | US-01, US-02 | Xong, đã merge `main` |
 | S2 | Kho hàng admin (danh mục, sản phẩm, ảnh flat lay) + API đọc cho người mua | US-03, US-04 | Xong (đóng 2026-11-17), đã merge `main` |
 | S3 | Phòng thử đồ GenAI + test tự động | US-05, US-06 | Xong 2026-11-18, đã merge `main` (`372f9a0`) |
-| S4 | Mua sắm & giỏ hàng: thêm vào giỏ, giỏ + tổng tiền, đặt hàng COD, admin xem đơn; nợ kỹ thuật S3 | US-07, US-08, US-10 (bổ sung, chờ duyệt), US-09 | PLANNED 2026-11-18 ([sprint4.md](../sprints/sprint4.md)); thiết kế đề xuất xong, chờ chốt Q23–Q34; migration `010`/`011` chưa áp |
+| S4 | Mua sắm & giỏ hàng: thêm vào giỏ, giỏ + tổng tiền, đặt hàng COD, admin xem đơn; nợ kỹ thuật S3 | US-07, US-08, US-10 (bổ sung, đã duyệt), US-09 | PLANNED 2026-11-18 ([sprint4.md](../sprints/sprint4.md)); Task 1 xong: Q23–Q34 đã chốt, migration `010`/`011` đã áp 2026-11-18; Task 2–6 chưa làm |
 
 ---
 Cập nhật: 2026-11-18
