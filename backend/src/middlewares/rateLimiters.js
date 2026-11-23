@@ -64,6 +64,20 @@ export const tryOnPollLimiter = createLimiter({
   keyGenerator: (req) => req.user.id,
 });
 
+/** Giỏ hàng ghi (POST/PUT/DELETE /api/cart/items): 60 lần / phút / user. Đặt sau requireAuth. */
+export const cartLimiter = createLimiter({
+  windowMs: 60 * 1000,
+  limit: 60,
+  keyGenerator: (req) => req.user.id,
+});
+
+/** Giỏ hàng đọc (GET /api/cart): 120 lần / phút / user. Đặt sau requireAuth. */
+export const cartReadLimiter = createLimiter({
+  windowMs: 60 * 1000,
+  limit: 120,
+  keyGenerator: (req) => req.user.id,
+});
+
 /** Ảnh sản phẩm (POST + PUT dùng chung bộ đếm): 60 lần / 15 phút / user. Đặt sau requireAuth. */
 export const productImageLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,

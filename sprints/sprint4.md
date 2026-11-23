@@ -3,7 +3,7 @@
 Người mua thêm sản phẩm vào giỏ ngay trong phòng thử đồ, xem/sửa giỏ với tổng tiền do server tính và đặt hàng (COD, chưa thanh toán online); admin xem danh sách và chi tiết đơn đã đặt. Hoàn thành luồng thương mại cơ bản của Epic 4.
 User Stories: US-07 (thêm vào giỏ ở phòng thử đồ), US-08 (xem giỏ + tổng tiền), **US-10 (đặt hàng từ giỏ – bổ sung ngoài PB, chờ duyệt)**, US-09 (admin xem đơn)
 
-**Trạng thái:** IN PROGRESS (nhánh `feature/US-07-cart`). Task 1 hoàn thành 2026-11-18: thiết kế xong, Q23–Q34 đã chốt và US-10 đã duyệt, migration `010`/`011` đã áp qua MCP và verify. Flow `design/flows/cart-and-orders.md`, contract/mã lỗi/route/D32–D41 ở `design/flows/README.md`, schema `design/database/schema.md` mục 15–17. Task 2 (UI mock) hoàn thành 2026-11-18 (lint/build/test 111 xanh, chưa test trình duyệt với backend thật); Task 3–6 chưa bắt đầu.
+**Trạng thái:** IN PROGRESS (nhánh `feature/US-07-cart`). Task 1 hoàn thành 2026-11-18: thiết kế xong, Q23–Q34 đã chốt và US-10 đã duyệt, migration `010`/`011` đã áp qua MCP và verify. Flow `design/flows/cart-and-orders.md`, contract/mã lỗi/route/D32–D41 ở `design/flows/README.md`, schema `design/database/schema.md` mục 15–17. Task 2 (UI mock) hoàn thành 2026-11-18 (lint/build/test 111 xanh, chưa test trình duyệt với backend thật); Task 3 (backend giỏ hàng) hoàn thành 2026-11-23; Task 4–6 chưa bắt đầu.
 
 **Khoảng trống PB đã xử lý:** PB Epic 4 không có story tạo đơn nhưng US-09 cần "đơn hàng đã đặt". Đã thêm **US-10** vào `PB.md` (đánh dấu chờ duyệt) và `sprints/US-10.md` với phạm vi tối thiểu (form giao hàng → đơn `pending`, COD, xoá giỏ, trang xác nhận). Theo quy tắc Scrum của `CLAUDE.md`, mọi thứ ngoài backlog được ghi vào đây trước khi làm.
 
@@ -60,10 +60,12 @@ User Stories: US-07 (thêm vào giỏ ở phòng thử đồ), US-08 (xem giỏ 
 **Mô tả:** Cài đặt đúng `cart-and-orders.md` mục 2–4 và `schema.md` mục 15. Chỉ bắt đầu sau khi `010` đã áp và verify (common_errors 1.2).
 
 **Công việc:**
-- [ ] `routes/cartRoutes.js` (`requireAuth`), `controllers/cartController.js`, `services/cartService.js`, `validators/cartValidator.js`; gắn `/cart` vào `routes/index.js`
-- [ ] `GET /api/cart`, `POST /api/cart/items` (201/200, cộng dồn optimistic tối đa 3 lần, `23505` → cộng dồn, `23503` → 404), `PUT /api/cart/items/:productId` (tuyệt đối), `DELETE /api/cart/items/:productId` (idempotent); trả `cart` đầy đủ, ký URL theo lô, không lộ `image_path`
-- [ ] Mã lỗi mới `CART_FULL`, `CART_QUANTITY_LIMIT`, `CART_ITEM_NOT_FOUND` đúng message bảng mã lỗi; limiter `cartLimiter` (60/phút), `cartReadLimiter` (120/phút) theo user
-- [ ] Test Vitest + supertest (mock `config/supabase.js`) theo `cart-and-orders.md` mục 12; regression xoá sản phẩm admin vẫn đúng (cascade giỏ)
+- [x] `routes/cartRoutes.js` (`requireAuth`), `controllers/cartController.js`, `services/cartService.js`, `validators/cartValidator.js`; gắn `/cart` vào `routes/index.js`
+- [x] `GET /api/cart`, `POST /api/cart/items` (201/200, cộng dồn optimistic tối đa 3 lần, `23505` → cộng dồn, `23503` → 404), `PUT /api/cart/items/:productId` (tuyệt đối), `DELETE /api/cart/items/:productId` (idempotent); trả `cart` đầy đủ, ký URL theo lô, không lộ `image_path`
+- [x] Mã lỗi mới `CART_FULL`, `CART_QUANTITY_LIMIT`, `CART_ITEM_NOT_FOUND` đúng message bảng mã lỗi; limiter `cartLimiter` (60/phút), `cartReadLimiter` (120/phút) theo user
+- [x] Test Vitest + supertest (mock `config/supabase.js`) theo `cart-and-orders.md` mục 12; regression xoá sản phẩm admin vẫn đúng (cascade giỏ)
+
+**Kết quả (2026-11-23):** `npm test` 331 xanh (20 file), lint sạch; chạy thật cổng 3100 + Supabase thật: 2 POST song song -> 1 dòng quantity 2 (200 + 201), >10 -> 409, user khác 404/giỏ trống, DELETE idempotent, ảnh ký URL; dữ liệu test đã dọn (cart_items 0). **Chưa verify trên DB thật:** dòng thứ 51 `CART_FULL` (chỉ có 6 sản phẩm; đã có test mock), limiter 429 (chỉ test mock).
 
 **Acceptance Criteria:** mọi mã lỗi/shape đúng contract; 2 POST song song cùng sản phẩm → 1 dòng quantity 2; > 10 → 409; dòng thứ 51 → 409; user khác không chạm được giỏ; `npm test` + lint sạch; chạy thật trên Supabase (cổng 3100) đạt các kịch bản trên.
 

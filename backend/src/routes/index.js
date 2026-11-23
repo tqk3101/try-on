@@ -5,6 +5,7 @@ import adminRoutes from './adminRoutes.js';
 import categoryRoutes from './categoryRoutes.js';
 import userRoutes from './userRoutes.js';
 import tryOnRoutes from './tryOnRoutes.js';
+import cartRoutes from './cartRoutes.js';
 import { notFoundHandler } from '../middlewares/errorHandler.js';
 
 const router = Router();
@@ -13,6 +14,7 @@ router.use('/auth', authRoutes);
 router.use('/user', userRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/try-on', tryOnRoutes);
+router.use('/cart', cartRoutes);
 router.use('/admin', adminRoutes);
 // Mọi đường dẫn /api/* không khớp route nào
 router.use(notFoundHandler);
