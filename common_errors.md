@@ -4,7 +4,7 @@ Nhật ký các lỗi đã gặp khi làm dự án và cách sửa, nhóm theo l
 
 Mỗi mục: **Triệu chứng** → **Nguyên nhân** → **Cách sửa / phòng tránh**.
 
-Cập nhật lần cuối: 2026-11-17 (Sprint 3, Task 1).
+Cập nhật lần cuối: 2026-11-24 (Sprint 4, Task 6).
 
 ## Mục lục
 1. [Database / Supabase](#1-database--supabase)
@@ -42,6 +42,11 @@ Cập nhật lần cuối: 2026-11-17 (Sprint 3, Task 1).
 - **Triệu chứng:** gọi 2 `apply_migration` cùng lúc, cái sau lỗi `23505 duplicate key ... schema_migrations_pkey (version)`.
 - **Nguyên nhân:** version migration lấy theo thời gian đến giây; hai lệnh chạy song song nhận cùng version. Lệnh lỗi bị rollback hoàn toàn nên chưa áp gì.
 - **Cách sửa / phòng tránh:** chạy migration **tuần tự** (008 xong mới 009), rồi `list_migrations` để xác nhận.
+
+### 1.5 Ràng buộc và tên cột khi tạo dữ liệu test bằng SQL (Sprint 4)
+- **Triệu chứng:** insert sản phẩm test bị `products_image_path_owner` từ chối; truy vấn `try_on_results.image_path` báo không có cột; gửi nhiều câu lệnh trong một `execute_sql` chỉ thấy kết quả của câu cuối.
+- **Nguyên nhân / cách làm đúng:** `products.image_path` phải bắt đầu bằng `{product_id}/` (dùng id cố định rồi đặt đường dẫn có tiền tố đó). Cột thật của `try_on_results` là `result_path`, `avatar_path`, `product_image_path`. `execute_sql` chỉ trả kết quả câu lệnh cuối, nên gộp kiểm tra thành một `select` nhiều subquery.
+- **Phòng tránh:** đọc `design/database/schema.md` trước khi viết SQL test; đặt tên dữ liệu test có tiền tố `TEST` để dọn theo tiền tố.
 
 ---
 
@@ -177,6 +182,13 @@ Cập nhật lần cuối: 2026-11-17 (Sprint 3, Task 1).
 pm-cache_npx*
 ode_modules`) với `chromium.launch({ executablePath: chrome.exe, headless: true })` (profile tạm riêng) và cổng dev riêng (backend 3100, frontend 5174 + `VITE_API_URL`). Đặt script ngoài repo; không in mật khẩu seed. Khi giao verify trình duyệt cho subagent, nói trước phương án dự phòng này.
 
+### 6.9 Chạy backend thủ công thiếu biến môi trường; `.env` đặt provider thật
+- **Triệu chứng:** `node src/server.js` trần thoát ngay vì thiếu biến môi trường.
+- **Cách làm:** chạy `node --env-file-if-exists=.env src/server.js` (kèm `PORT=3100 CLIENT_URL=http://localhost:5174`, xem 6.3). `backend/.env` đang là `TRY_ON_PROVIDER=gemini`, nên khi test phải đặt `TRY_ON_PROVIDER=stub` bằng biến môi trường của shell để không gọi Gemini thật.
+
+### 6.10 Heredoc dài chứa tiếng Việt trong Bash bị lỗi parse
+- **Phòng tránh:** tạo file nhiều dòng tiếng Việt bằng công cụ Write (hoặc Edit), không dùng heredoc trong Bash. Heredoc ngắn cho commit message vẫn dùng được.
+
 ---
 
 ## 7. Kiểm thử & dữ liệu test
@@ -200,6 +212,15 @@ ode_modules`) với `chromium.launch({ executablePath: chrome.exe, headless: tru
 
 ### 7.4 Kịch bản test auth tối thiểu cần chạy trên trình duyệt thật
 Guest vào trang bảo vệ → `/login?redirect=`; đăng ký → `/login` có banner; đăng nhập sai (thông báo chung); đăng nhập đúng; reload giữ phiên; đăng xuất → `/`; Back sau đăng xuất; token giả khi khởi động; 401 giữa phiên (banner hết hạn, nhiều request song song chỉ xử lý một lần); đồng bộ nhiều tab; mất kết nối backend (màn lỗi + Thử lại); 429; responsive 375px.
+
+### 7.5 Test focus trap và Esc của `<dialog>` modal bằng trình duyệt tự động (Sprint 4)
+- **Triệu chứng:** script báo focus trap và Esc thất bại dù hộp thoại đúng.
+- **Nguyên nhân:** khi Tab vượt nút cuối, `document.activeElement` về `BODY` (focus sang giao diện trình duyệt, đúng hành vi của `<dialog>` modal), không phải nội dung trang; vòng Tab dừng lúc focus đang ngoài dialog nên Esc không tới dialog.
+- **Cách sửa:** coi `BODY` là giao diện trình duyệt, Tab tiếp cho tới khi focus quay lại trong dialog rồi mới bấm Esc. jsdom không có `showModal`/`close` nên test Testing Library phải giả lập chúng và không kiểm focus; focus kiểm trên Chrome thật.
+
+### 7.6 Dữ liệu seed bị đổi tạm khi test, và thứ không khôi phục được (Sprint 4)
+- **Phòng tránh:** trước khi đổi dữ liệu seed (giá sản phẩm, `profiles.try_on_consent_at`) ghi lại giá trị gốc rồi khôi phục và truy vấn xác nhận. Không khôi phục được: sequence `orders.order_number` (đã tăng, mã đơn kế tiếp bỏ số) và `products.updated_at` của dòng đã sửa. Xoá `order_items`/`orders` test trước `profiles` (FK RESTRICT). Đơn phân trang hàng loạt tạo bằng SQL trực tiếp không đi qua `place_order`, nên đường đặt hàng chỉ được kiểm bằng vài đơn qua giao diện.
+- **Quyền xoá qua MCP:** xác nhận của `execute_sql` hết hạn nếu không ai bấm (xem 1.3). Khi người dùng đã cho phép test qua Supabase trong phiên thì subagent chỉ được xoá dữ liệu TEST do chính nó tạo; agent chính vẫn đếm lại bảng sau cùng.
 
 ---
 
