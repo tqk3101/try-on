@@ -33,6 +33,19 @@ function getClient() {
 }
 
 /**
+ * Lấy thông tin model (ai.models.get) để kiểm tra model/key còn dùng được. Chỉ gọi metadata,
+ * không sinh ảnh nên không tốn hạn mức tạo ảnh.
+ * @param {string} [model] Mặc định GEMINI_IMAGE_MODEL hoặc DEFAULT_GEMINI_IMAGE_MODEL.
+ * @param {AbortSignal} [abortSignal]
+ */
+export async function getModelInfo(model, abortSignal) {
+  return getClient().models.get({
+    model: model || getGeminiImageModel(),
+    ...(abortSignal && { config: { abortSignal } }),
+  });
+}
+
+/**
  * Chỉnh/sinh ảnh bằng Gemini.
  * @param {object} options
  * @param {string} options.prompt Câu lệnh chỉnh sửa.

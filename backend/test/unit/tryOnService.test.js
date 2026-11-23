@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { computeInputKey } from '../../src/services/tryOn/inputKey.js';
 import { STALE_GRACE_MS } from '../../src/services/tryOn/jobRunner.js';
 import { ERROR_MESSAGES } from '../../src/services/tryOn/providerError.js';
+import { createGeminiProvider } from '../../src/services/tryOn/providers/gemini.js';
 import { createTryOnService, missingProfileFields } from '../../src/services/tryOn/tryOnService.js';
 import { createMemoryTryOnRepo } from '../helpers/memoryTryOnRepo.js';
 
@@ -112,6 +113,22 @@ describe('requestTryOn: điều kiện đầu vào', () => {
 
   it('503 TRY_ON_UNAVAILABLE khi provider không khả dụng; không tính hạn mức, không tạo row', async () => {
     const { svc, repo } = setup({ providerOverride: { isAvailable: () => false } });
+    expect(await reject(svc.requestTryOn(USER, PRODUCT))).toMatchObject({
+      status: 503,
+      code: 'TRY_ON_UNAVAILABLE',
+    });
+    expect(repo.rows).toHaveLength(0);
+  });
+
+  it('503 TRY_ON_UNAVAILABLE sau khi kiểm tra model lúc khởi động trả 404 (provider gemini mock)', async () => {
+    const gemini = createGeminiProvider({
+      model: 'm-gone',
+      isConfigured: () => true,
+      getModelInfo: vi.fn().mockRejectedValue(Object.assign(new Error('x'), { status: 404 })),
+      logger: { error: vi.fn(), warn: vi.fn() },
+    });
+    expect(await gemini.verifyModel()).toBe('unavailable');
+    const { svc, repo } = setup({ providerOverride: gemini });
     expect(await reject(svc.requestTryOn(USER, PRODUCT))).toMatchObject({
       status: 503,
       code: 'TRY_ON_UNAVAILABLE',

@@ -183,6 +183,50 @@ describe('createGeminiProvider (editImage được mock, không gọi API thật
     configured = false;
     expect(createGeminiProvider({ isConfigured: () => false }).isAvailable()).toBe(false);
   });
+
+  describe('verifyModel (kiểm tra model khi khởi động, getModelInfo được mock)', () => {
+    const make = (getModelInfo, isConfigured = () => true) => {
+      const logger = { error: vi.fn(), warn: vi.fn() };
+      const provider = createGeminiProvider({ model: 'm1', getModelInfo, isConfigured, logger });
+      return { provider, logger };
+    };
+    const httpError = (status) => Object.assign(new Error('SECRET-BODY'), { status });
+
+    it('bỏ qua (không gọi API) khi thiếu key', async () => {
+      const getModelInfo = vi.fn();
+      const { provider } = make(getModelInfo, () => false);
+      expect(await provider.verifyModel()).toBe('skipped');
+      expect(getModelInfo).not.toHaveBeenCalled();
+    });
+
+    it('model tồn tại -> ok, provider vẫn khả dụng', async () => {
+      const getModelInfo = vi.fn().mockResolvedValue({ name: 'models/m1' });
+      const { provider } = make(getModelInfo);
+      expect(await provider.verifyModel()).toBe('ok');
+      expect(getModelInfo.mock.calls[0][0]).toBe('m1');
+      expect(provider.isAvailable()).toBe(true);
+    });
+
+    it.each([404, 401, 403])('status %i -> đánh dấu không khả dụng, không ném lỗi', async (st) => {
+      const { provider, logger } = make(vi.fn().mockRejectedValue(httpError(st)));
+      expect(await provider.verifyModel()).toBe('unavailable');
+      expect(provider.isAvailable()).toBe(false);
+      expect(JSON.stringify(logger.error.mock.calls)).not.toContain('SECRET-BODY');
+    });
+
+    it.each([
+      ['lỗi mạng', Object.assign(new TypeError('fetch failed'), { cause: { code: 'ENOTFOUND' } })],
+      ['500', httpError(500)],
+      ['429', httpError(429)],
+      ['lỗi lạ', new Error('boom')],
+    ])('%s -> chỉ cảnh báo, provider vẫn khả dụng', async (_name, err) => {
+      const { provider, logger } = make(vi.fn().mockRejectedValue(err));
+      expect(await provider.verifyModel()).toBe('unknown');
+      expect(provider.isAvailable()).toBe(true);
+      expect(logger.warn).toHaveBeenCalledTimes(1);
+      expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('boom');
+    });
+  });
 });
 
 describe('createProvider', () => {

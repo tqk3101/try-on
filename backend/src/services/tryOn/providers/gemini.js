@@ -2,6 +2,7 @@ import {
   DEFAULT_GEMINI_IMAGE_MODEL,
   GeminiNotConfiguredError,
   editImage as defaultEditImage,
+  getModelInfo as defaultGetModelInfo,
   isGeminiConfigured,
 } from '../../geminiImageService.js';
 import { ERROR_CODES, TryOnProviderError } from '../providerError.js';
@@ -115,8 +116,10 @@ export function pickGeminiImage(result) {
 export function createGeminiProvider({
   model,
   editImage = defaultEditImage,
+  getModelInfo = defaultGetModelInfo,
   isConfigured = isGeminiConfigured,
   logger = console,
+  verifyTimeoutMs = 10_000,
 } = {}) {
   let unavailable = false;
   const resolvedModel = model || DEFAULT_GEMINI_IMAGE_MODEL;
@@ -135,6 +138,30 @@ export function createGeminiProvider({
       logger.error(
         `[try-on] Gemini không khả dụng (${reason}). Kiểm tra GEMINI_API_KEY và GEMINI_IMAGE_MODEL (đang dùng "${resolvedModel}") rồi khởi động lại backend.`,
       );
+    },
+    /**
+     * Kiểm tra model khi khởi động (best-effort, không bao giờ ném lỗi, không chặn khởi động).
+     * 404/401/403 hoặc key sai -> đánh dấu không khả dụng; lỗi mạng/khác -> chỉ cảnh báo.
+     * Không log message gốc của SDK (có thể chứa nội dung phản hồi).
+     * @returns {Promise<'skipped'|'ok'|'unavailable'|'unknown'>}
+     */
+    async verifyModel() {
+      if (!isConfigured()) return 'skipped';
+      const signal = AbortSignal.timeout(verifyTimeoutMs);
+      try {
+        await getModelInfo(resolvedModel, signal);
+        return 'ok';
+      } catch (err) {
+        const mapped = mapGeminiError(err, signal);
+        if (mapped.code === ERROR_CODES.PROVIDER_UNAVAILABLE && mapped.permanent) {
+          this.markUnavailable(`kiểm tra model khi khởi động: status ${mapped.status ?? 'n/a'}`);
+          return 'unavailable';
+        }
+        logger.warn(
+          `[try-on] Chưa kiểm tra được model Gemini "${resolvedModel}" khi khởi động (${mapped.code}); vẫn tiếp tục chạy.`,
+        );
+        return 'unknown';
+      }
     },
     async generate({ personImage, garmentImage, signal }) {
       let result;
