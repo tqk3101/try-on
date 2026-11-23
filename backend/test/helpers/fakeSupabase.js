@@ -83,6 +83,10 @@ export function createFakeSupabase() {
         query.limit = count;
         return chain;
       },
+      range(from, to) {
+        query.range = { from, to };
+        return chain;
+      },
       order(column, options) {
         query.orders.push({ column, ...options });
         return chain;
@@ -113,6 +117,11 @@ export function createFakeSupabase() {
   const fake = {
     calls,
     from: (table) => builder(table),
+    /** RPC giả: handler đăng ký bằng fake.on(`rpc:<tên hàm>`, (query) => ...); query.payload = tham số. */
+    rpc: (name, args) => {
+      const query = { ...createQuery(`rpc:${name}`), op: 'rpc', payload: args };
+      return run(query);
+    },
     storage: { from: storageBucket },
     storageApi: {},
     auth: { admin: {} },

@@ -78,6 +78,13 @@ export const cartReadLimiter = createLimiter({
   keyGenerator: (req) => req.user.id,
 });
 
+/** Đặt hàng POST /api/orders: 10 lần / 15 phút / user. Đặt sau requireAuth. */
+export const orderLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  keyGenerator: (req) => req.user.id,
+});
+
 /** Ảnh sản phẩm (POST + PUT dùng chung bộ đếm): 60 lần / 15 phút / user. Đặt sau requireAuth. */
 export const productImageLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,

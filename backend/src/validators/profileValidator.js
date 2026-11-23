@@ -2,7 +2,7 @@ import { HttpError } from '../middlewares/httpError.js';
 
 const DISPLAY_NAME_MAX_LENGTH = 50;
 // Số di động VN sau chuẩn hoá (design/flows/profile.md).
-const PHONE_REGEX = /^0[35789][0-9]{8}$/;
+export const PHONE_REGEX =/^0[35789][0-9]{8}$/;
 const HEIGHT_RANGE = Object.freeze({ min: 100, max: 250 });
 const WEIGHT_RANGE = Object.freeze({ min: 30, max: 250 });
 

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getAdminPing } from '../controllers/adminController.js';
+import { getAdminOrder, getAdminOrders } from '../controllers/orderController.js';
 import {
   getCategories,
   postCategory,
@@ -32,5 +33,8 @@ router.get('/products/:id', getProductById);
 router.post('/products', productImageLimiter, parseProductImageUpload, postProduct);
 router.put('/products/:id', productImageLimiter, parseProductImageUpload, putProduct);
 router.delete('/products/:id', removeProduct);
+// Đơn hàng: chỉ xem (Sprint 4, Q29), không có API đổi trạng thái.
+router.get('/orders', getAdminOrders);
+router.get('/orders/:id', getAdminOrder);
 
 export default router;
