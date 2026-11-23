@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { useCart } from '../../features/cart/cartContext.js';
-import { addCartItem } from '../../features/cart/cartApi.js';
+import { addCartItem } from '../../services/cartApi.js';
 import { PATHS } from '../../routes/paths.js';
 import { BagIcon } from '../icons.jsx';
 import { useToast } from '../toastContext.js';
@@ -18,7 +18,7 @@ const VIEW_CART = { label: 'Xem giỏ hàng', to: PATHS.cart };
  * sản phẩm; toast nêu đúng tên sản phẩm đã gửi.
  * `onProductMissing()`: gọi khi 404 PRODUCT_NOT_FOUND để trang tải lại danh sách.
  */
-export default function AddToCartButton({ product, category, onProductMissing }) {
+export default function AddToCartButton({ product, onProductMissing }) {
   const { cart, applyCart } = useCart();
   const { showToast } = useToast();
   const [pending, setPending] = useState(() => new Set());
@@ -30,12 +30,7 @@ export default function AddToCartButton({ product, category, onProductMissing })
     const { id, name } = product;
     setPending((prev) => new Set(prev).add(id));
     try {
-      const { cart: next, item, created } = await addCartItem(id, 1, {
-        name,
-        price: product.price,
-        imageUrl: product.imageUrl,
-        category,
-      });
+      const { cart: next, item, created } = await addCartItem(id, 1);
       applyCart(next);
       if (created) showToast(`Đã thêm ${name} vào giỏ.`, { action: VIEW_CART });
       else showToast(`${name} đã có trong giỏ, số lượng: ${item.quantity}.`, { action: VIEW_CART });

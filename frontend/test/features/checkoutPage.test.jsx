@@ -7,15 +7,15 @@ import { ToastContext } from '../../src/components/toastContext.js';
 import CartProvider from '../../src/features/cart/CartProvider.jsx';
 import CheckoutPage from '../../src/pages/CheckoutPage.jsx';
 
-vi.mock('../../src/features/cart/cartApi.js', async (importOriginal) => ({
+vi.mock('../../src/services/cartApi.js', async (importOriginal) => ({
   ...(await importOriginal()),
   getCart: vi.fn(),
 }));
-vi.mock('../../src/features/orders/orderApi.js', () => ({ placeOrder: vi.fn() }));
+vi.mock('../../src/services/orderApi.js', () => ({ placeOrder: vi.fn() }));
 vi.mock('../../src/services/userApi.js', () => ({ fetchProfile: vi.fn() }));
 
-const { getCart } = await import('../../src/features/cart/cartApi.js');
-const { placeOrder } = await import('../../src/features/orders/orderApi.js');
+const { getCart } = await import('../../src/services/cartApi.js');
+const { placeOrder } = await import('../../src/services/orderApi.js');
 const { fetchProfile } = await import('../../src/services/userApi.js');
 
 const item = { productId: 'p1', name: 'Váy hoa', price: 100000, quantity: 2, lineTotal: 200000, imageUrl: null };

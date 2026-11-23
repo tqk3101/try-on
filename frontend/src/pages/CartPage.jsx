@@ -5,7 +5,7 @@ import EmptyState from '../components/EmptyState.jsx';
 import ErrorState from '../components/ErrorState.jsx';
 import { BagIcon } from '../components/icons.jsx';
 import { useToast } from '../components/toastContext.js';
-import { removeCartItem, updateCartItem } from '../features/cart/cartApi.js';
+import { removeCartItem, updateCartItem } from '../services/cartApi.js';
 import { useCart } from '../features/cart/cartContext.js';
 import useDocumentTitle from '../hooks/useDocumentTitle.js';
 import { PATHS } from '../routes/paths.js';

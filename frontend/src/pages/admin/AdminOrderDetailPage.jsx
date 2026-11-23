@@ -5,7 +5,7 @@ import OrderItems from '../../components/cart/OrderItems.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
 import ErrorState from '../../components/ErrorState.jsx';
 import { ArrowLeftIcon, BagIcon } from '../../components/icons.jsx';
-import { adminGetOrder } from '../../features/orders/orderApi.js';
+import { adminGetOrder } from '../../services/adminApi.js';
 import useDocumentTitle from '../../hooks/useDocumentTitle.js';
 import { PATHS } from '../../routes/paths.js';
 import ForbiddenPage from '../ForbiddenPage.jsx';

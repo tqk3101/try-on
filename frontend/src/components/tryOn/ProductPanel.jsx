@@ -72,7 +72,7 @@ export default function ProductPanel({
         </div>
       </div>
 
-      <AddToCartButton product={product} category={category} onProductMissing={onProductMissing} />
+      <AddToCartButton product={product} onProductMissing={onProductMissing} />
 
       {total > 1 && (
         <nav aria-label="Sản phẩm trong danh mục" className="mt-6">

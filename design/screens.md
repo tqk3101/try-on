@@ -590,7 +590,7 @@ Hành vi của `features/tryOn/useTryOnRoom.js`:
 
 Bám `design/flows/cart-and-orders.md` mục 6–9, `design/flows/README.md` (contract, mã lỗi `CART_FULL` / `CART_QUANTITY_LIMIT` / `CART_ITEM_NOT_FOUND` / `CART_EMPTY` / `CART_CHANGED`, `ORDER_NOT_FOUND`, D32–D41, Q23–Q34), `sprints/US-07..US-10.md`. Route mới (trong `RequireAuth` + `MainLayout`; admin thêm `RequireAdmin`): `/cart`, `/checkout`, `/orders/:id`, `/admin/orders`, `/admin/orders/:id`. Admin cũng mua hàng được (Q31).
 
-Trạng thái code: **UI layer + mock** (Sprint 4 Task 2). Dữ liệu qua `features/cart/cartApi.js` và `features/orders/orderApi.js` (điểm nối duy nhất, đang gọi `mocks/cartMock.js`, `mocks/orderMock.js`); giỏ dùng chung qua `features/cart/CartProvider.jsx` (`useCart()`). Mock có cờ kịch bản bằng query `?mock=cờ1,cờ2` (lưu sessionStorage, `?mock=off` để tắt), danh sách cờ ở đầu `mocks/mockFlags.js`.
+Trạng thái code: **đã nối API thật** (Sprint 4 Task 5, mock đã xoá). Dữ liệu qua `services/cartApi.js`, `services/orderApi.js` và `services/adminApi.js` (`adminListOrders`, `adminGetOrder`); giỏ dùng chung qua `features/cart/CartProvider.jsx` (`useCart()`), nạp `GET /api/cart` khi đăng nhập/khôi phục phiên/tab hiện lại, xoá khi đăng xuất.
 
 **Quy ước chung**
 - Tiền là `number` VND, hiển thị `formatVnd`; tiền (thành tiền, tổng) luôn lấy từ server, không tự tính ở client. Mã đơn `DH` + 6 số; ngày `dd/MM/yyyy HH:mm` (`formatOrderDate`).
@@ -742,17 +742,20 @@ Loading skeleton "Đang tải đơn hàng…"; 404 `ORDER_NOT_FOUND`: `EmptyStat
 ### Responsive
 Một cột; bảng dòng chuyển thẻ dưới 640px; 375px không cuộn ngang.
 
-## Điểm TODO nối API cho agent-coder (Sprint 4 Task 5)
+## Điểm nối API (Sprint 4 Task 5) — ĐÃ HOÀN THÀNH
+
+Các `TODO(Task5)` đã được xử lý ngày 2026-11-24: hàm API chuyển sang `services/*Api.js` (bảng dưới giữ làm tham chiếu hợp đồng); `addCartItem(productId, quantity)` không còn tham số `hint`. Bản gốc danh sách TODO:
+
 
 Mọi `TODO(Task5)` nằm ở hai file API; thay thân hàm bằng `apiClient`, giữ chữ ký và giá trị trả về (shape đúng `cart-and-orders.md` mục 2), rồi xoá mock.
 
 | File / hàm | Endpoint | Trả về | Ghi chú |
 |------------|----------|--------|---------|
-| `features/cart/cartApi.js` `getCart({ signal })` | `GET /api/cart` | `{ cart }` | `CartProvider.refresh`, `CartPage`, `CheckoutPage` |
+| `services/cartApi.js` `getCart({ signal })` | `GET /api/cart` | `{ cart }` | `CartProvider.refresh`, `CartPage`, `CheckoutPage` |
 | `addCartItem(productId, quantity, hint)` | `POST /api/cart/items { productId, quantity }` | `{ cart, item, created }` | `created` suy ra `item.quantity === quantity` (apiClient không trả 201/200); **bỏ tham số `hint`** (chỉ cho mock). Dùng ở `AddToCartButton` |
 | `updateCartItem(productId, quantity)` | `PUT /api/cart/items/:productId { quantity }` | `{ cart }` | `CartPage.handleUpdate`; 404 `CART_ITEM_NOT_FOUND` đã xử lý |
 | `removeCartItem(productId)` | `DELETE /api/cart/items/:productId` | `{ cart }` | `CartPage.handleRemove` |
-| `features/orders/orderApi.js` `placeOrder(body)` | `POST /api/orders` | `{ order }` | `CheckoutPage.handleSubmit`; body `{ idempotencyKey, recipientName, phone, shippingAddress, note, expectedTotal }` (note có thể `null`) |
+| `services/orderApi.js` / `services/adminApi.js` `placeOrder(body)` | `POST /api/orders` | `{ order }` | `CheckoutPage.handleSubmit`; body `{ idempotencyKey, recipientName, phone, shippingAddress, note, expectedTotal }` (note có thể `null`) |
 | `getOrder(id, { signal })` | `GET /api/orders/:id` | `{ order }` | `OrderPage`; 404 -> EmptyState |
 | `adminListOrders({ status, page, pageSize, signal })` | `GET /api/admin/orders?status&page&pageSize` | `{ orders, pagination }` | `AdminOrdersPage`; chỉ đưa tham số có giá trị vào query |
 | `adminGetOrder(id, { signal })` | `GET /api/admin/orders/:id` | `{ order }` | `AdminOrderDetailPage` (có thể chuyển 2 hàm admin sang `services/adminApi.js`) |

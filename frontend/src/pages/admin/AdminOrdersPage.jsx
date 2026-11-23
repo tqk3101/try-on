@@ -6,7 +6,7 @@ import ErrorState from '../../components/ErrorState.jsx';
 import { BagIcon } from '../../components/icons.jsx';
 import Pagination from '../../components/Pagination.jsx';
 import SelectField from '../../components/SelectField.jsx';
-import { adminListOrders } from '../../features/orders/orderApi.js';
+import { adminListOrders } from '../../services/adminApi.js';
 import { isOrderStatus, ORDER_STATUSES } from '../../features/orders/orderStatus.js';
 import useDocumentTitle from '../../hooks/useDocumentTitle.js';
 import { PATHS } from '../../routes/paths.js';

@@ -4,8 +4,8 @@ import { AuthContext } from '../../src/auth/authContext.js';
 import { useCart } from '../../src/features/cart/cartContext.js';
 import CartProvider from '../../src/features/cart/CartProvider.jsx';
 
-vi.mock('../../src/features/cart/cartApi.js', () => ({ getCart: vi.fn() }));
-const { getCart } = await import('../../src/features/cart/cartApi.js');
+vi.mock('../../src/services/cartApi.js', () => ({ getCart: vi.fn() }));
+const { getCart } = await import('../../src/services/cartApi.js');
 
 const cartOf = (itemCount) => ({ items: [], lineCount: itemCount ? 1 : 0, itemCount, total: itemCount * 1000 });
 let api;

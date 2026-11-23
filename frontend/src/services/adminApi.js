@@ -45,3 +45,21 @@ export function updateAdminProduct(id, formData) {
 export function deleteAdminProduct(id) {
   return apiClient.delete(`/admin/products/${encodeURIComponent(id)}`);
 }
+
+/**
+ * Danh sách đơn (GET /api/admin/orders?status=&page=&pageSize=); query chỉ gồm tham số có giá trị.
+ * Trả về { orders: AdminOrderSummary[], pagination }.
+ */
+export function adminListOrders({ status, page, pageSize, signal } = {}) {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (page) params.set('page', String(page));
+  if (pageSize) params.set('pageSize', String(pageSize));
+  const query = params.toString();
+  return apiClient.get(`/admin/orders${query ? `?${query}` : ''}`, { signal });
+}
+
+/** Chi tiết đơn (GET /api/admin/orders/:id). Trả về { order: AdminOrder }; 404 ORDER_NOT_FOUND. */
+export function adminGetOrder(id, { signal } = {}) {
+  return apiClient.get(`/admin/orders/${encodeURIComponent(id)}`, { signal });
+}

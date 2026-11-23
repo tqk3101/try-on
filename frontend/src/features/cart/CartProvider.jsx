@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../auth/authContext.js';
 import { CartContext } from './cartContext.js';
-import { getCart } from './cartApi.js';
+import { getCart } from '../../services/cartApi.js';
 
 const IDLE = { status: 'idle', cart: null, error: '' };
 
